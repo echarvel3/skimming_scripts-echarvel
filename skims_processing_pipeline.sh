@@ -98,6 +98,9 @@ declare -A array
 counter=0
 
 for f in `ls ${input}`; do
+	## Filles out an ASSOCIATIVE ARRAY with each element being the name of 
+	## the name of the file with no extension and the full file name separated
+	## by a comma. For example: " GCA_0000000.1,GCA_000000.1.fastq.gz ".
 
         genome=$(basename -- "$f")
         extension="${genome##*.}"
@@ -106,7 +109,7 @@ for f in `ls ${input}`; do
 		extension="${genome##*.}"
 		if [ "$extension" = "fastq" ] || [ "$extension" = "fq" ] || [ "$extension" = "fna" ] || [ "$extension" = "fa" ]; then
 			genome="${genome%.*}"
-        		if [ "$extension" = "fastq" ] || [ "$extension" = "fq" ]; then
+        	if [ "$extension" = "fastq" ] || [ "$extension" = "fq" ]; then
 				genome="${genome%?}"
 			fi
 			key=$genome
@@ -114,14 +117,14 @@ for f in `ls ${input}`; do
 		fi
 	elif [ "$extension" = "fastq" ] || [ "$extension" = "fq" ] || [ "$extension" = "fna" ] || [ "$extension" = "fa" ]; then
 		genome="${genome%.*}"
-                if [ "$extension" = "fastq" ] || [ "$extension" = "fq" ]; then
+        if [ "$extension" = "fastq" ] || [ "$extension" = "fq" ]; then
 			genome="${genome%?}"
 		fi
 		key=$genome
 		counter=1
 	fi
 
-        if [ "1" -eq "$counter" ]; then
+    if [ "1" -eq "$counter" ]; then
 		value=$f
         	array[${key}]="${array[${key}]}${array[${key}]:+,}${value}"
 		counter=0
@@ -129,6 +132,7 @@ for f in `ls ${input}`; do
 
 done
 
+## CREATING 
 direc_name=$(basename "${BASH_SOURCE[0]%.*}") 
 mkdir -p ${out_dir}/${direc_name}/{bbmap,assemblies,consult,kraken,respect}
 
