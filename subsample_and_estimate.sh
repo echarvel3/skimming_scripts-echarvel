@@ -68,7 +68,8 @@ done
 
 if [ $(du -k "${input}" | cut -f1) -gt 1000000 ]; then
     ## Initial Subampling for 29 Million Reads ##
-    subsampled_out="out_dir"
+    subsampled_out="$out_dir"
+    echo "--subampling ${in_file} to ${sample_size}"
     subsample "${input}" 29000000 > "${out_dir}/${subsampled_out}"
 
     if [ -d "${out_dir}/skmer_library" ]; then
