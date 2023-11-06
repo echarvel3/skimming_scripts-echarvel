@@ -13,18 +13,18 @@ run_skmer_query () {
     local in_file="${1}"
     local skmer_lib="${2}"
 
-    skmer query -a "${in_file}" "${skmer_lib}" -p "${threads}"
+    skmer query -a "${in_file}" "${skmer_lib}/skmer_library" -p "${threads}"
     }
 
 run_skmer_reference () {
     local in_file="${1}"
     local skmer_lib="${2}"
 
-    temp_input=$(mktemp -d "temp_in.XXXXX")
+    temp_input=$(mktemp -d "${skmer_lib}/temp_in.XXXXXX")
     ln -s $(realpath "${in_file}") "${temp_input}"
 
-    skmer reference "${temp_input}" -o "${skmer_lib}" -p "${threads}"
-    rm "${temp_input}"
+    skmer reference "${temp_input}" -l "${skmer_lib}/skmer_library" -p "${threads}"
+    rm -r "${temp_input}"
     }
 
 run_respect () {
@@ -37,7 +37,7 @@ check_coverage () {
 ################
 
 input=$1
-out_dir="./"
+out_dir="./OUT_subsample_and_estimate"
 threads=2
 low_cov=3
 high_cov=5
@@ -66,16 +66,19 @@ do
     esac
 done
 
-if [ $(du -k "${input}" | cut -f1) -gt 1000000 ]; then
+mkdir "${out_dir}"
+
+echo $(du -k "${input}" | cut -f1) 
+
+if [ $(du -k "${input}" | cut -f1) -gt 10485760 ]; then
     ## Initial Subampling for 29 Million Reads ##
-    subsampled_out="$out_dir"
-    echo "--subampling ${in_file} to ${sample_size}"
-    subsample "${input}" 29000000 > "${out_dir}/${subsampled_out}"
+    subsampled_out="subsampled_${input##*/}"
+    subsample "${input}" 29 > "${out_dir}/${subsampled_out}"
 
     if [ -d "${out_dir}/skmer_library" ]; then
-        run_skmer_query "${subsampled_out}" "${out_dir}/skmer_library" 
+        run_skmer_query "${out_dir}/${subsampled_out}" "${out_dir}" 
     else
-        run_skmer_reference "${subsampled_out}" "${out_dir}/skmer_library" 
+      	run_skmer_reference "${out_dir}/${subsampled_out}" "${out_dir}"
     fi
 
     coverage=$(check_coverage)
@@ -85,9 +88,9 @@ if [ $(du -k "${input}" | cut -f1) -gt 1000000 ]; then
         subsample "${input}" "${new_sample_size}" > "${out_dir}/${subsampled_out}"
 
         if [ -d "${out_dir}/skmer_library" ]; then
-            run_skmer_query "${subsampled_out}" "${out_dir}/skmer_library" 
+            run_skmer_query "${out_dir}/${subsampled_out}" "${out_dir}/skmer_library" 
         else
-            run_skmer_reference "${subsampled_out}" "${out_dir}/skmer_library" 
+            run_skmer_reference "${out_dir}/${subsampled_out}" "${out_dir}/skmer_library" 
         fi
     fi
 # else
