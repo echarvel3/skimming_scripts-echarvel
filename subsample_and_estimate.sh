@@ -1,40 +1,61 @@
 #!/bin/bash
 
-
+###############
 ## FUNCTIONS ##
-function subsample {
-    local in_file="${1}"
-    local sample_size="${2}"
+###############
 
-    seqtk sample -s100 "${in_file}" "${sample_size}"
+function subsample {
+    local file="${1}"
+    local sample_size="${2}"
+    local subsampled_out="subsampled_${file##*/}"
+
+    seqtk sample -s100 "${in_file}" "${sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
 }
 
-run_skmer_query () {
+function run_skmer {
     local in_file="${1}"
     local skmer_lib="${2}"
 
-    skmer query -a "${in_file}" "${skmer_lib}/skmer_library" -p "${threads}"
-    }
+    if [ -d "${out_dir}/skmer_library" ]; then
+        skmer query -a "${in_file}" "${skmer_lib}/skmer_library" -p "${threads}" 
+    else
+      	temp_input=$(mktemp -d "${skmer_lib}/temp_in.XXXXXX")
+        ln -s $(realpath "${in_file}") "${temp_input}"
 
-run_skmer_reference () {
-    local in_file="${1}"
-    local skmer_lib="${2}"
+        skmer reference "${temp_input}" -l "${skmer_lib}/skmer_library" -p "${threads}"
+        rm -r "${temp_input}"
+    fi
+}
 
-    temp_input=$(mktemp -d "${skmer_lib}/temp_in.XXXXXX")
-    ln -s $(realpath "${in_file}") "${temp_input}"
-
-    skmer reference "${temp_input}" -l "${skmer_lib}/skmer_library" -p "${threads}"
-    rm -r "${temp_input}"
-    }
-
-run_respect () {
+function run_respect {
     echo "hi"
 }
 
-check_coverage () {
-    echo "10x"
+function check_coverage {
+    local param_file="${1}"
+
+    for x in $(printf $(cat "${param_file}" | cut -f1,2 | tail -n+1 | awk '$2 >= ${high_cov}')); do
+        printf "$(printf "${x}" | sed -e 's/ /,/g') "
+    done
+    for x in $(printf $(cat "${param_file}" | cut -f1,2 | tail -n+1 | awk '$2 <= ${low_cov}')); do
+        printf "$(printf "${x}" | sed -e 's/ /,/g') "
+    done
 }
-################
+
+function get_read_length {
+    local dat_file="${1}"
+    local read_len=$(grep "read_length" "${dat_file}" | cut -f2)
+
+    if [ ${read_len} == "NA" ]; then
+        printf "-1"
+    else
+        printf "${read_len}"
+    fi
+}
+
+############
+## INPUTS ##
+############
 
 input=$1
 out_dir="./OUT_subsample_and_estimate"
@@ -47,7 +68,7 @@ usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
 Runs nuclear read processing pipeline on a batch of reads split into two mates in reference to a constructed library:
     
     Positional Arguments:
-    input       Path to a single merged paired-end read sequencing file. 
+    input       Path to an input directory 
 
     Optional inputs:
     -h          Display this help message and exit.
@@ -66,72 +87,67 @@ do
     esac
 done
 
+#################
+## MAIN SCRIPT ##
+#################
+
 mkdir "${out_dir}"
+mkdir "${out_dir}/subsampled_reads/"
 
-echo $(du -k "${input}" | cut -f1) 
 
-if [ $(du -k "${input}" | cut -f1) -gt 10485760 ]; then
-    ## Initial Subampling for 29 Million Reads ##
-    subsampled_out="subsampled_${input##*/}"
-    subsample "${input}" 29 > "${out_dir}/${subsampled_out}"
+for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
+    ## Initial Subampling for 28 Million Reads (Parallelized) ##
+    ((i=i%threads)); ((i++==0)) && wait
+    subsample "${file}" 28000000 &
+done
 
-    if [ -d "${out_dir}/skmer_library" ]; then
-        run_skmer_query "${out_dir}/${subsampled_out}" "${out_dir}" 
-    else
-      	run_skmer_reference "${out_dir}/${subsampled_out}" "${out_dir}"
-    fi
+for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 <= 10485760' | cut -f 2 | xargs); do
+    ## Creating symlinks for small files ##
+    ln --symbolic $(realpath "${file}") "${out_dir}/subsampled_reads/"
+done
 
-    coverage=$(check_coverage)
-    
-    if [ "${coverage}" -lt "${low_cov}" ] || [ "${coverage}" -gt "${high_cov}" ]; then
-        new_sample_size=20000
-        subsample "${input}" "${new_sample_size}" > "${out_dir}/${subsampled_out}"
+for file in $(ls "${out_dir}/subsampled_reads/"); do
+    run_skmer "${out_dir}/subsampled_reads/${file}" "${out_dir}"
+done
 
-        if [ -d "${out_dir}/skmer_library" ]; then
-            run_skmer_query "${out_dir}/${subsampled_out}" "${out_dir}/skmer_library" 
-        else
-            run_skmer_reference "${out_dir}/${subsampled_out}" "${out_dir}/skmer_library" 
-        fi
-    fi
-# else
-#     run_skmer
-#     run_respect
-#     coverage=check_coverage
+mkdir "${out_dir}/respect_data/"
+printf "Input    read_length" > "${out_dir}/respect_data/hist_info.txt"
+
+for file in $(ls "${out_dir}/skmer_library/"); do
+    read_len=$(get_read_length "${file}/${file}.dat")
+    printf "${file}.hist    ${read_len}" >> "${out_dir}/respect_data/hist_info.txt"
+    ln --symbolic "$(realpath ${file}/${file}.hist)" "${out_dir}/respect_data/"
+done
+
+# run_respect "${out_dir}/respect_data/"
+coverages=$(check_coverage ${out_dir}/estimated_parameters.txt)
+
+for sample in $coverages; do
+done
+
+# if [ $(du -k "${input}" | cut -f1) -gt 10485760 ]; then
+#     ## Initial Subampling for 28 Million Reads ##
+#     subsampled_out="subsampled_${input##*/}"
+#     subsample "${input}" 28000000 > "${out_dir}/subsampled_reads/${subsampled_out}"
+
+#     run_skmer "${out_dir}/subsampled_reads/${subsampled_out}" "${out_dir}" 
+#     coverage=$(check_coverage "${out_dir}/skmer_library/${subsampled_out%.*}/${subsampled_out%.*}.dat")
 
 #     if [ "${coverage}" -lt "${low_cov}" ] || [ "${coverage}" -gt "${high_cov}" ]; then
-#         subsample
-#         run_skmer
-#         run_respect
+#         new_sample_size=$(bc <<< "4*(28000000/${coverage})")
+#         subsample "${input}" "${new_sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}" 
+#         ### NOTE: What if new sample is larger than OG file?
+#         run_skmer "${out_dir}/subsampled_reads/${subsampled_out}" "${out_dir}"        
 #     fi
-fi
 
+# else
+#     run_skmer "${input}" "${out_dir}"
+#     coverage=$(check_coverage "${out_dir}/skmer_library/${input%.*}/${input%.*}.dat")
 
-# if [ 1 -eq "$(echo "$cov_val < $upper_bound" | bc)" ] && [ "0" -eq "$assembly_counter" ]; then
-# 	      echo "Coverage in range"
-#               echo "Respect running"
-#               echo "Input	read_length
-# unclassified-kra_${genome}.hist	$(grep read_length ${lib_dir}/unclassified-kra_${genome}/unclassified-kra_${genome}.dat |cut -f2)" >${folder}/respect/${genome}/info.txt
-
-#               respect --debug -N ${iterations} --threads ${threads} -I ${folder}/respect/${genome}/info.txt -i ${lib_dir}/unclassified-kra_${genome}/unclassified-kra_${genome}.hist --tmp ${folder}/respect/${genome}/output/tmp -o ${folder}/respect/${genome}/output || true
-#               echo "Respect done"
-#               rm ${folder}/respect/${genome}/info.txt
-#       elif [ "0" -eq "$assembly_counter" ]; then
-# 	      ratio_val="$( echo "scale=4; $set_bound / $cov_val" | bc)"
-#               echo "Coverage not in range, sample to be downsampled by ${ratio_val}"
-#               seqtk sample ${folder}/kraken/unclassified-kra_${genome}.fq $ratio_val> ${folder}/respect/${genome}/downsampled_${genome}_${ratio_val}.fq
-#               echo "Running respect on downsampled sample"
-#               respect -i ${folder}/respect/${genome}/downsampled_${genome}_${ratio_val}.fq -N ${iterations} --debug --tmp ${folder}/respect/${genome}/output/tmp -o ${folder}/respect/${genome}/output || true
-#               echo "Respect done"
-#       else
-# 	      if [ "$extension" = "gz" ]; then
-# 		      echo "Running respect on genome assembly"
-#               	      respect -i ${folder}/assemblies/${genome}.fna -N ${iterations} --debug --tmp ${folder}/respect/${genome}/output/tmp -o ${folder}/respect/${genome}/output || true
-#               	      echo "Respect done"
-#               else
-# 		      temp=${folder}/${genome}.${extension}
-# 		      input=$(dirname $lib_dir)
-# 		      echo "Running respect on genome assembly"
-#                       respect -i ${temp} -N ${iterations} --debug --tmp ${extra}/respect/${genome}/output/tmp -o ${extra}/respect/${genome}/output || true
-#                       echo "Respect done"
-#               fi
+#     if [ "${coverage}" -gt "${high_cov}" ]; then
+#         rm --recursive "${out_dir}/skmer_library/${input%.*}/"
+#         new_sample_size=$(bc <<< "4*(28000000/${coverage})")
+#         subsample "${input}" "${new_sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
+#         run_skmer   "${out_dir}/subsampled_reads/${subsampled_out}" "${out_dir}" 
+#     fi
 # fi
