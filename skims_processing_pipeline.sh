@@ -227,14 +227,13 @@ for key in "${!array[@]}"; do
     counter=0
 
     if [ -f "${out_dir}/${direc_name}/consult/unclassified-seq_${genome}_merged" ] && [ "0" -eq "$assembly_counter" ]; then
-
-            test_var=0
-            test_var=`grep "$genome" $SCRIPT_DIR/log_file.txt | grep -c -e "D$" -e "DE$" -e "DEB$" -e "DEBC$"` || true
-            if [ "1" -eq "$test_var" ]; then
-                counter=1
-            else
-                rm ${out_dir}/${direc_name}/consult/unclassified-seq_${genome}_merged
-            fi
+		test_var=0
+        test_var=`grep "$genome" $SCRIPT_DIR/log_file.txt | grep -c -e "D$" -e "DE$" -e "DEB$" -e "DEBC$"` || true
+        if [ "1" -eq "$test_var" ]; then
+            counter=1
+        else
+            rm ${out_dir}/${direc_name}/consult/unclassified-seq_${genome}_merged
+        fi
     fi
 
     if [ "0" -eq "$counter" ] && [ "0" -eq "$assembly_counter" ]; then      
@@ -267,46 +266,48 @@ for key in "${!array[@]}"; do
 		fi
 	fi
 
-        if [ "0" -eq "$counter" ] && [ "0" -eq "$assembly_counter" ]; then
+    if [ "0" -eq "$counter" ] && [ "0" -eq "$assembly_counter" ]; then
+        echo "Kraken2 decontamination step starts"
+        ./kraken2 --db krakenlib/ ${out_dir}/${direc_name}/consult/unclassified-seq_${genome}_merged --unclassified-out ${out_dir}/${direc_name}/kraken/unclassified-kra_${genome}.fq
+        echo "Kraken2 decontamination step ends"
 
-                echo "Kraken2 decontamination step starts"
-                ./kraken2 --db krakenlib/ ${out_dir}/${direc_name}/consult/unclassified-seq_${genome}_merged --unclassified-out ${out_dir}/${direc_name}/kraken/unclassified-kra_${genome}.fq
-                echo "Kraken2 decontamination step ends"
-
-                var=`grep "$genome" $SCRIPT_DIR/log_file.txt`
-                if [ "1" -eq "$interleaven_counter" ]; then
-                        var1="$genome""IADE"
-                        sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
-                else
-                        var1="$genome""ADE"
-                        sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
-                fi
-
+        var=`grep "$genome" $SCRIPT_DIR/log_file.txt`
+        if [ "1" -eq "$interleaven_counter" ]; then
+            var1="$genome""IADE"
+            sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
         else
-                echo "Kraken2 decontamination step on this sample already performed"
+            var1="$genome""ADE"
+            sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
         fi
+    else
+        echo "Kraken2 decontamination step on this sample already performed"
+    fi
 
 	f=`ls ${lib_dir} | wc -l`
 
 	mkdir -p ${out_dir}/temp_ops
-        cd ${out_dir}/temp_ops
+    cd ${out_dir}/temp_ops
 
 	counter=0
 
-        if [ -d "${lib_dir}/unclassified-kra_${genome}" ] || [ -d "${lib_dir}/${genome}"  ]; then
-
-                test_var=0
+    if [ -d "${lib_dir}/unclassified-kra_${genome}" ] || [ -d "${lib_dir}/${genome}"  ]; then
+        test_var=0
 		test_var=`grep "$genome" $SCRIPT_DIR/log_file.txt | grep -c -e "B$" -e "BC$"` || true
-                if [ "1" -eq "$test_var" ]; then
-                        counter=1
-                else
-                        rm -r ${lib_dir}/unclassified-kra_${genome} || true
+        if [ "1" -eq "$test_var" ]; then
+            counter=1
+        else
+            rm -r ${lib_dir}/unclassified-kra_${genome} || true
 			rm -r ${lib_dir}/${genome} || true
-                fi
         fi
+    fi
+
+optimal_subsampling=false
+
+#while [ $optimal_subsampling = false]
+#do
+
 
 	if [ "0" -eq "$counter" ]; then
-		
 		if [ "0" -eq "$assembly_counter" ]; then
 			${SCRIPT_DIR}/skmer_pipeline.sh $f ${out_dir}/${direc_name}/kraken unclassified-kra_${genome}.fq $lib_dir $cores
 		else
@@ -317,17 +318,17 @@ for key in "${!array[@]}"; do
 			fi
 		fi
 
-        	if [ "1" -eq "$interleaven_counter" ]; then
+        if [ "1" -eq "$interleaven_counter" ]; then
 			var=`grep "$genome" $SCRIPT_DIR/log_file.txt`
-                	var1="$genome""IADEB"
-                	sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
+            var1="$genome""IADEB"
+            sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
 		elif [ "1" -eq "$assembly_counter" ]; then
 			echo "$genome""B">>$SCRIPT_DIR/log_file.txt
 		else
 			var=`grep "$genome" $SCRIPT_DIR/log_file.txt`
                 	var1="$genome""ADEB"
                 	sed -i "s/$var/$var1/" $SCRIPT_DIR/log_file.txt
-        	fi
+        fi
 	else
 		echo "Skmer operation on this sample already performed"
 	fi
