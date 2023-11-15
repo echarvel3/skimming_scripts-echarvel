@@ -74,13 +74,16 @@ function get_read_length {
 ## INPUTS ##
 ############
 
+SCRIPT_DIR="/home/echarvel/skimming_scripts/"
+
 input=$1
 out_dir="./OUT_subsample_and_estimate"
 threads=10
 low_cov=3
 high_cov=5
 mean_cov=4
-initial_sampling=28000000
+initial_sampling=30000000
+file_ending1="1.fq.gz"
 
 usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
 
@@ -93,15 +96,16 @@ Runs nuclear read processing pipeline on a batch of reads split into two mates i
     -h          Display this help message and exit.
     -o          Path to directory of piepline's output. 
     -t          Threads to be used by all software in this micropipeline (seqtk sample, Skmer, RESPECT).
-
+    -m          For paired-end reads in bbmap operations: 'merge' or 'interleave'
 "
 
 while getopts "ho:t:" opts 
 do
     case "${opts}" in
         h) echo "${usage}"; exit;;
-        o) out_dir="${OPTARG}"; exit;;
+        o) out_dir="${OPTARG}";;
         t) threads="${OPTARG}";;
+        m) merge="${OPTARG}";;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
@@ -111,12 +115,24 @@ done
 #################
 
 mkdir "${out_dir}"
+mkdir "${out_dir}/merged_reads/"
+
+# for file in "${input}/*${file_ending1}"; do
+#         read1=$file
+#         read2=${file%"1.fq.gz"}"2.fq.gz"
+
+#         if test -f "$read2"; then
+#             ${SCRIPT_DIR}/bbmap_pipeline.sh $read1 $read2 ${out_dir}/merged_reads/${file%"1.fq.gz"}not_merged.fastq 
+#         fi     
+#         rm ./tmp.*   
+# done
+
 mkdir "${out_dir}/subsampled_reads/"
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
    ## Initial Subampling for 28 Million Reads (Parallelized) ## 
-   ((i=i%threads)); ((i++==0)) && wait
    subsample "${file}" "${initial_sampling}" &
+   pwait $(($threads-1))
 done
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 <= 10485760' | cut -f 2 | xargs); do
@@ -124,7 +140,21 @@ for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 <= 10485760'
    ln --symbolic $(realpath "${file}") "${out_dir}/subsampled_reads/"
 done
 
-for file in $(ls "${out_dir}/subsampled_reads/"); do
+mkdir "${out_dir}/consult_out/"
+
+${SCRIPT_DIR}/CONSULT-II/consult_search -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" -o "${out_dir}/consult_out/" \
+    --query-path "${out_dir}/subsampled_reads/" \ 
+    --number-matches 2 \ 
+    --thread-count ${threads} \ 
+    --unclassified-out "${out_dir}/consult_out/"
+
+mkdir "${out_dir}/kraken_out/"
+
+for file in "${out_dir}/consult_out/"; do
+    ${SCRIPT_DIR}/kraken2/kraken2 --db ${SCRIPT_DIR}/kraken2/kraken_human_lib/ "${file}" --threads ${threads} --unclassified-out ${out_dir}/kraken_out/${file%".fastq"}_unclassout.fastq
+done 
+
+for file in $(ls "${out_dir}/kraken_out/"); do
     ## Runs skmer for all files
     run_skmer "${out_dir}/subsampled_reads/${file}" "${out_dir}"
 done
@@ -145,16 +175,29 @@ respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt"
 coverages=$(check_coverage ${out_dir}/estimated-parameters.txt)
 
 for sample in $coverages; do
-   genome=${sample%.hist,*}
-   rm "${out_dir}/skmer_library/${genome}/${genome}.hist"
-   rm "${out_dir}/skmer_library/${genome}/${genome}.dat"
-   rm "${out_dir}/skmer_library/${genome}/${genome}.msh"
-   rmdir "${out_dir}/skmer_library/${genome}"
-   rm "${out_dir}/respect_data/${genome}.hist"
-   rm "${out_dir}/subsampled_reads/${genome}.f*" 
-   calc_new_subsample "${sample}" &
-   pwait $(($threads-1))
+    genome=${sample%.hist,*}
+    rm "${out_dir}/skmer_library/${genome}/${genome}.hist"
+    rm "${out_dir}/skmer_library/${genome}/${genome}.dat"
+    rm "${out_dir}/skmer_library/${genome}/${genome}.msh"
+    rmdir "${out_dir}/skmer_library/${genome}"
+    rm "${out_dir}/respect_data/${genome}.hist"
+    rm "${out_dir}/subsampled_reads/${genome}.f*" 
+
+    calc_new_subsample "${sample}" &
+    pwait $(($threads-1))
 done
+
+${SCRIPT_DIR}/CONSULT-II/consult_search -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" -o "${out_dir}/consult_out/" \
+    --query-path "${out_dir}/subsampled_reads/" \ 
+    --number-matches 2 \ 
+    --thread-count ${threads} \ 
+    --unclassified-out "${out_dir}/consult_out/"
+
+mkdir "${out_dir}/kraken_out/"
+
+for file in "${out_dir}/consult_out/"; do
+    ${SCRIPT_DIR}/kraken2/kraken2 --db ${SCRIPT_DIR}/kraken2/kraken_human_lib/ "${file}" --threads ${threads} --unclassified-out ${out_dir}/kraken_out/${file%".fastq"}_unclassout.fastq
+done 
 
 if [ "$(ls ${out_dir}/skmer_library/)" == "CONFIG" ]; then 
     rm "${out_dir}/skmer_library/CONFIG"
