@@ -3,6 +3,7 @@
 ###############
 ## FUNCTIONS ##
 ###############
+
 function pwait {
     while [ $(jobs -p | wc -l) -ge $1 ]; do
         sleep 1
@@ -16,8 +17,6 @@ function subsample {
 
     seqtk sample -s100 "${in_file}" "${sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
 }
-
-
 
 function calc_new_subsample {
     local sample=${1}
@@ -51,10 +50,10 @@ function check_coverage {
     local param_file="${1}"
 
     for x in $(cat "${param_file}" | cut -f1,4 | tail -n+2 | awk -v high_cov="${high_cov}" '$2 > high_cov' | sed -e 's/\t/,/g'); do
-            echo "$(echo "${x}")"
+        echo "$(echo "${x}")"
     done
     for x in $(cat "${param_file}" | cut -f1,4 | tail -n+2 | awk -v high_cov="${high_cov}" '$2 < low_cov' | sed -e 's/\t/,/g'); do
-            echo "$(echo "${x}")"
+        echo "$(echo "${x}")"
     done
 }
 
@@ -68,7 +67,6 @@ function get_read_length {
         printf "${read_len}"
     fi
 }
-
 
 ############
 ## INPUTS ##
@@ -105,7 +103,7 @@ do
         h) echo "${usage}"; exit;;
         o) out_dir="${OPTARG}";;
         t) threads="${OPTARG}";;
-        m) merge="${OPTARG}";;
+        m) merge="${OPTARG}";; #NOT YET IMPLEMENTED
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
@@ -206,7 +204,6 @@ fi
 
 for file in $(ls "${out_dir}/subsampled_reads/"); do
     if ! $(ls ${out_dir}/skmer_library/ | grep -q ${file%.*}); then
-        echo "$file"
         run_skmer "${out_dir}/subsampled_reads/${file}" "${out_dir}"
     fi
 done
@@ -217,35 +214,8 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ## creates the hist_info.txt file that contains average read lengths
     file=${directory##*/}
     read_len=$(get_read_length "${directory}/${file}.dat")
-    echo -e "${file}.hist\t${read_len}\n" >> "${out_dir}/respect_data/hist_info.txt"
+    echo -e "${file}.hist\t${read_len}" >> "${out_dir}/respect_data/hist_info.txt"
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
 respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads 2
-
-# if [ $(du -k "${input}" | cut -f1) -gt 10485760 ]; then
-#     ## Initial Subampling for 28 Million Reads ##
-#     subsampled_out="subsampled_${input##*/}"
-#     subsample "${input}" 28000000 > "${out_dir}/subsampled_reads/${subsampled_out}"
-
-#     run_skmer "${out_dir}/subsampled_reads/${subsampled_out}" "${out_dir}" 
-#     coverage=$(check_coverage "${out_dir}/skmer_library/${subsampled_out%.*}/${subsampled_out%.*}.dat")
-
-#     if [ "${coverage}" -lt "${low_cov}" ] || [ "${coverage}" -gt "${high_cov}" ]; then
-#         new_sample_size=$(bc <<< "4*(28000000/${coverage})")
-#         subsample "${input}" "${new_sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}" 
-#         ### NOTE: What if new sample is larger than OG file?
-#         run_skmer "${out_dir}/subsampled_reads/${subsampled_out}" "${out_dir}"        
-#     fi
-
-# else
-#     run_skmer "${input}" "${out_dir}"
-#     coverage=$(check_coverage "${out_dir}/skmer_library/${input%.*}/${input%.*}.dat")
-
-#     if [ "${coverage}" -gt "${high_cov}" ]; then
-#         rm --recursive "${out_dir}/skmer_library/${input%.*}/"
-#         new_sample_size=$(bc <<< "4*(28000000/${coverage})")
-#         subsample "${input}" "${new_sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
-#         run_skmer   "${out_dir}/subsampled_reads/${subsampled_out}" "${out_dir}" 
-#     fi
-# fi
