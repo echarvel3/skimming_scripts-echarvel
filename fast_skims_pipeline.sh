@@ -81,6 +81,7 @@ low_cov=3
 high_cov=5
 mean_cov=4
 initial_sampling=30000000
+file_ending1="1.fq.gz"
 
 usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
 
@@ -112,6 +113,18 @@ done
 #################
 
 mkdir "${out_dir}"
+mkdir "${out_dir}/merged_reads/"
+
+# for file in "${input}/*${file_ending1}"; do
+#         read1=$file
+#         read2=${file%"1.fq.gz"}"2.fq.gz"
+
+#         if test -f "$read2"; then
+#             ${SCRIPT_DIR}/bbmap_pipeline.sh $read1 $read2 ${out_dir}/merged_reads/${file%"1.fq.gz"}not_merged.fastq 
+#         fi     
+#         rm ./tmp.*   
+# done
+
 mkdir "${out_dir}/subsampled_reads/"
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
@@ -125,12 +138,27 @@ for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 <= 10485760'
    ln --symbolic $(realpath "${file}") "${out_dir}/subsampled_reads/"
 done
 
-for file in $(ls "${out_dir}/subsampled_reads/"); do
+mkdir "${out_dir}/consult_out/"
+
+${SCRIPT_DIR}/CONSULT-II/consult_search -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" -o "${out_dir}/consult_out/" \
+    --query-path "${out_dir}/subsampled_reads/" \ 
+    --number-matches 2 \ 
+    --thread-count ${threads} \ 
+    --unclassified-out "${out_dir}/consult_out/"
+
+mkdir "${out_dir}/kraken_out/"
+
+for file in "${out_dir}/consult_out/"; do
+    ${SCRIPT_DIR}/kraken2/kraken2 --db ${SCRIPT_DIR}/kraken2/kraken_human_lib/ "${file}" --threads ${threads} --unclassified-out ${out_dir}/kraken_out/${file%".fastq"}_unclassout.fastq
+done 
+
+for file in $(ls "${out_dir}/kraken_out/"); do
     ## Runs skmer for all files
     run_skmer "${out_dir}/subsampled_reads/${file}" "${out_dir}"
 done
 
 mkdir "${out_dir}/respect_data/"
+
 echo -e "Input\tread_length" > "${out_dir}/respect_data/hist_info.txt"
 for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
     ## Prepares respect data directory (links skmer's .hist files)
@@ -141,7 +169,7 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
-respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads ${threads}
+respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads 2
 coverages=$(check_coverage ${out_dir}/estimated-parameters.txt)
 
 for sample in $coverages; do
@@ -156,6 +184,18 @@ for sample in $coverages; do
     calc_new_subsample "${sample}" &
     pwait $(($threads-1))
 done
+
+${SCRIPT_DIR}/CONSULT-II/consult_search -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" -o "${out_dir}/consult_out/" \
+    --query-path "${out_dir}/subsampled_reads/" \ 
+    --number-matches 2 \ 
+    --thread-count ${threads} \ 
+    --unclassified-out "${out_dir}/consult_out/"
+
+mkdir "${out_dir}/kraken_out/"
+
+for file in "${out_dir}/consult_out/"; do
+    ${SCRIPT_DIR}/kraken2/kraken2 --db ${SCRIPT_DIR}/kraken2/kraken_human_lib/ "${file}" --threads ${threads} --unclassified-out ${out_dir}/kraken_out/${file%".fastq"}_unclassout.fastq
+done 
 
 if [ "$(ls ${out_dir}/skmer_library/)" == "CONFIG" ]; then 
     rm "${out_dir}/skmer_library/CONFIG"
@@ -178,4 +218,4 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
-respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads ${threads}
+respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads 2
