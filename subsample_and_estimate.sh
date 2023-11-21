@@ -71,16 +71,12 @@ function get_read_length {
 ############
 ## INPUTS ##
 ############
-
-SCRIPT_DIR="/home/echarvel/skimming_scripts/"
-
 input=$1
-out_dir="./OUT_subsample_and_estimate"
-threads=10
-low_cov=3
-high_cov=5
-mean_cov=4
-initial_sampling=30000000
+def_out_dir="./OUT_subsample_and_estimate"
+def_threads=10
+def_mean_cov=4
+def_cov_dev=1
+def_sampling=30000000
 
 usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
 
@@ -91,9 +87,11 @@ Runs nuclear read processing pipeline on a batch of reads split into two mates i
 
     Optional inputs:
     -h          Display this help message and exit.
-    -o          Path to directory of piepline's output. 
-    -t          Threads to be used by all software in this micropipeline (seqtk sample, Skmer, RESPECT).
-    -m          For paired-end reads in bbmap operations: 'merge' or 'interleave'
+    -o          Path to directory of piepline's output. [Default = "./OUT_subsample_and_estimate"]
+    -t          Threads to be used by all software in this pipeline (seqtk sample, Skmer, RESPECT). [Default = 10]
+    -s          Size of initial sample in number of reads. [Default = 30000000]
+    -c          Target coverage for subsampling. [Default = 4]
+    -d          Sets top and bottom thresholds for coverage (+ and - from target coverage). [Default = 1] 
 "
 
 while getopts "ho:t:" opts 
@@ -102,10 +100,21 @@ do
         h) echo "${usage}"; exit;;
         o) out_dir="${OPTARG}";;
         t) threads="${OPTARG}";;
-        m) merge="${OPTARG}";; #NOT YET IMPLEMENTED
+        s) initial_sampling="${OPTARG}";;
+        c) mean_cov="${OPTARG}";;
+        d) cov_dev="${OPTARG}";;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
+
+# setting default values...
+[[ -z $out_dir ]] && out_dir="${def_out_dir}"
+[[ -z $threads ]] && threads="${def_threads}"
+[[ -z $initial_sampling ]] && initial_sampling="${def_sampling}"
+[[ -z $mean_cov ]] && mean_cov="${def_mean_cov}"
+[[ -z $cov_dev ]] && cov_dev="${def_cov_dev}"
+high_cov="$(bc <<< $mean_cov + $cov_dev)"
+low_cov="$(bc <<< $mean_cov - $cov_dev)"
 
 #################
 ## MAIN SCRIPT ##
