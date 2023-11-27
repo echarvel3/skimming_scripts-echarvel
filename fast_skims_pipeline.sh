@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#set -x
+
 ###############
 ## FUNCTIONS ##
 ###############
@@ -13,9 +15,10 @@ function pwait {
 function subsample {
     local in_file="${1}"
     local sample_size="${2}"
+    local out_dir="${3}"
     local subsampled_out="subsampled_${in_file##*/}"
 
-    seqtk sample -s100 "${in_file}" "${sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
+    seqtk sample -s100 -2 "${in_file}" "${sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
 }
 
 function calc_new_subsample {
@@ -74,20 +77,37 @@ function get_read_length {
 
 SCRIPT_DIR="/home/echarvel/skimming_scripts/"
 
+#input=$1
 def_out_dir="./OUT_fast_skims_pipeline"
 def_threads=2
 def_merge="T"
 def_mean_cov=4
 def_cov_dev=1
-def_sampling=30000000
+def_sampling=32000000
 
 file_ending1="1.fq.gz"
+
+usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
+
+Runs nuclear read processing pipeline on a batch of merged and decontaminated reads in reference to a constructed library:
+    
+    Arguments:
+    -h          Display this help message and exit.
+    -i		Path to INPUT directory.
+    -o          Path to directory of pipeline's OUTPUT. [Default = "./OUT_fast_skims_pipeline"]
+    -t          Threads to be used by all software in this pipeline (seqtk sample, Skmer, RESPECT). [Default = 2]
+    -m          (T or F) Boolean, tells pipeline whether to merge or interleave paired-end reads. [Default = T] 
+    -s          Size of initial sample in number of reads. [Default = 30000000]
+    -c          Target coverage for subsampling. [Default = 4]
+    -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
+"
+## TODO: Implement different number of skmer threads, post-processing pipelines, custom decontmination directories.
 
 while getopts ":hi:o:t:m:s:c:d:" opts 
 do
     case $opts in
         h) echo "${usage}"; exit;;
-        i) input="${OPTARG}" ;;
+	i) input="${OPTARG}" ;;
         o) out_dir="${OPTARG}";;
         t) threads="${OPTARG}";;
         m) merge="${OPTARG}";;
@@ -99,15 +119,15 @@ do
 done
 
 # setting default values...
-[[ -z $input ]] && echo "NO INPUT GIVEN"; exit 1
 [[ -z $out_dir ]] && out_dir="${def_out_dir}"
-[[ -z $threads ]] && threads="${def_threads}"
+ [[ -z $threads ]] && threads="${def_threads}"
+# if [ -z ${threads+x} ]; then threads="${def_threads}"; fi
 [[ -z $merge ]] && merge="${def_merge}"
 [[ -z $initial_sampling ]] && initial_sampling="${def_sampling}"
 [[ -z $mean_cov ]] && mean_cov="${def_mean_cov}"
 [[ -z $cov_dev ]] && cov_dev="${def_cov_dev}"
-high_cov="$(bc <<< $mean_cov + $cov_dev)"
-low_cov="$(bc <<< $mean_cov - $cov_dev)"
+high_cov="$(bc <<< "$mean_cov + $cov_dev")"
+low_cov="$(bc <<< "$mean_cov - $cov_dev")"
 
 #################
 ## MAIN SCRIPT ##
@@ -128,11 +148,12 @@ mkdir "${out_dir}/merged_reads/"
 
 mkdir "${out_dir}/subsampled_reads/"
 
-for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
-   ## Initial Subampling for Initial Number of Reads (Parallelized) ## 
-   subsample "${file}" "${initial_sampling}" &
-   pwait $(($threads-1))
-done
+
+export -f subsample
+du --summarize --block-size=1K "${input}/"* \
+	| awk '$1 > 10485760' \
+	| cut -f 2 \
+	| parallel -j "${threads}" subsample {} "${initial_sampling}" "${out_dir}"
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 <= 10485760' | cut -f 2 | xargs); do
     ## Creating symlinks for small files ##
@@ -141,10 +162,12 @@ done
 
 mkdir "${out_dir}/consult_out/"
 
-${SCRIPT_DIR}/CONSULT-II/consult_search -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" -o "${out_dir}/consult_out/" \
-    --query-path "${out_dir}/subsampled_reads/" \ 
-    --number-matches 2 \ 
-    --thread-count ${threads} \ 
+${SCRIPT_DIR}/CONSULT-II/consult_search \
+    -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" \
+    -o "${out_dir}/consult_out/" \
+    --query-path "${out_dir}/subsampled_reads/" \
+    --number-of-matches 2 \
+    --thread-count ${threads} \
     --unclassified-out "${out_dir}/consult_out/"
 
 mkdir "${out_dir}/kraken_out/"
@@ -186,10 +209,12 @@ for sample in $coverages; do
     pwait $(($threads-1))
 done
 
-${SCRIPT_DIR}/CONSULT-II/consult_search -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" -o "${out_dir}/consult_out/" \
-    --query-path "${out_dir}/subsampled_reads/" \ 
-    --number-matches 2 \ 
-    --thread-count ${threads} \ 
+${SCRIPT_DIR}/CONSULT-II/consult_search \
+    -i "${SCRIPT_DIR}/CONSULT-II/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL" \
+    -o "${out_dir}/consult_out/" \
+    --query-path "${out_dir}/subsampled_reads/" \
+    --number-of-matches 2 \
+    --thread-count ${threads} \
     --unclassified-out "${out_dir}/consult_out/"
 
 mkdir "${out_dir}/kraken_out/"
