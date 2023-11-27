@@ -73,25 +73,25 @@ function get_read_length {
 ############
 input=$1
 def_out_dir="./OUT_subsample_and_estimate"
-def_threads=10
+def_threads=2
 def_mean_cov=4
 def_cov_dev=1
 def_sampling=30000000
 
 usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
 
-Runs nuclear read processing pipeline on a batch of reads split into two mates in reference to a constructed library:
+Runs nuclear read processing pipeline on a batch of merged and decontaminated reads in reference to a constructed library:
     
     Positional Arguments:
     input       Path to an input directory 
 
     Optional inputs:
     -h          Display this help message and exit.
-    -o          Path to directory of piepline's output. [Default = "./OUT_subsample_and_estimate"]
-    -t          Threads to be used by all software in this pipeline (seqtk sample, Skmer, RESPECT). [Default = 10]
+    -o          Path to directory of pipeline's output. [Default = "./OUT_subsample_and_estimate"]
+    -t          Threads to be used by all software in this pipeline (seqtk sample, Skmer, RESPECT). [Default = 2]
     -s          Size of initial sample in number of reads. [Default = 30000000]
     -c          Target coverage for subsampling. [Default = 4]
-    -d          Sets top and bottom thresholds for coverage (+ and - from target coverage). [Default = 1] 
+    -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
 "
 
 while getopts "ho:t:" opts 
@@ -124,7 +124,7 @@ mkdir "${out_dir}"
 mkdir "${out_dir}/subsampled_reads/"
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
-   ## Initial Subampling for 28 Million Reads (Parallelized) ## 
+   ## Initial Subampling for Initial Number of Reads (Parallelized) ## 
    subsample "${file}" "${initial_sampling}" &
    pwait $(($threads-1))
 done
@@ -150,7 +150,7 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
-respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads ${threads}
+respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads "${threads}"
 coverages=$(check_coverage ${out_dir}/estimated-parameters.txt)
 
 for sample in $coverages; do
@@ -187,4 +187,4 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
-respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads ${threads}
+respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads "${threads}"

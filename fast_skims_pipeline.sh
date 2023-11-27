@@ -75,27 +75,32 @@ function get_read_length {
 SCRIPT_DIR="/home/echarvel/skimming_scripts/"
 
 input=$1
-out_dir="./OUT_subsample_and_estimate"
-threads=10
-low_cov=3
-high_cov=5
-mean_cov=4
-initial_sampling=30000000
+def_out_dir="./OUT_fast_skims_pipeline"
+def_threads=2
+def_merge="T"
+def_mean_cov=4
+def_cov_dev=1
+def_sampling=30000000
+
 file_ending1="1.fq.gz"
 
 usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
 
-Runs nuclear read processing pipeline on a batch of reads split into two mates in reference to a constructed library:
+Runs nuclear read processing pipeline on a batch of merged and decontaminated reads in reference to a constructed library:
     
     Positional Arguments:
     input       Path to an input directory 
 
     Optional inputs:
     -h          Display this help message and exit.
-    -o          Path to directory of piepline's output. 
-    -t          Threads to be used by all software in this micropipeline (seqtk sample, Skmer, RESPECT).
-    -m          For paired-end reads in bbmap operations: 'merge' or 'interleave'
+    -o          Path to directory of pipeline's output. [Default = "./OUT_fast_skims_pipeline"]
+    -t          Threads to be used by all software in this pipeline (seqtk sample, Skmer, RESPECT). [Default = 2]
+    -m          (T or F) Boolean, tells pipeline whether to merge or interleave paired-end reads. [Default = T] 
+    -s          Size of initial sample in number of reads. [Default = 30000000]
+    -c          Target coverage for subsampling. [Default = 4]
+    -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
 "
+## TODO: Implement different number of skmer threads, post-processing pipelines, custom decontmination directories.
 
 while getopts "ho:t:" opts 
 do
@@ -103,10 +108,23 @@ do
         h) echo "${usage}"; exit;;
         o) out_dir="${OPTARG}";;
         t) threads="${OPTARG}";;
-        m) merge="${OPTARG}";; #NOT YET IMPLEMENTED
+        m) merge="${OPTARG}";;
+        s) initial_sampling="${OPTARG}";;
+        c) mean_cov="${OPTARG}";;
+        d) cov_dev="${OPTARG}";;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
+
+# setting default values...
+[[ -z $out_dir ]] && out_dir="${def_out_dir}"
+[[ -z $threads ]] && threads="${def_threads}"
+[[ -z $merge ]] && merge="${def_merge}"
+[[ -z $initial_sampling ]] && initial_sampling="${def_sampling}"
+[[ -z $mean_cov ]] && mean_cov="${def_mean_cov}"
+[[ -z $cov_dev ]] && cov_dev="${def_cov_dev}"
+high_cov="$(bc <<< $mean_cov + $cov_dev)"
+low_cov="$(bc <<< $mean_cov - $cov_dev)"
 
 #################
 ## MAIN SCRIPT ##
@@ -128,7 +146,7 @@ mkdir "${out_dir}/merged_reads/"
 mkdir "${out_dir}/subsampled_reads/"
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
-   ## Initial Subampling for 28 Million Reads (Parallelized) ## 
+   ## Initial Subampling for Initial Number of Reads (Parallelized) ## 
    subsample "${file}" "${initial_sampling}" &
    pwait $(($threads-1))
 done
@@ -169,7 +187,7 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
-respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads 2
+respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads "${threads}"
 coverages=$(check_coverage ${out_dir}/estimated-parameters.txt)
 
 for sample in $coverages; do
@@ -218,4 +236,4 @@ for directory in $(find "${out_dir}/skmer_library/" -maxdepth 1 -mindepth 1 -typ
     ln --symbolic "$(realpath ${directory}/${file}.hist)" "${out_dir}/respect_data/"
 done
 
-respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads 2
+respect -d "${out_dir}/respect_data/" -I "${out_dir}/respect_data/hist_info.txt" -o "${out_dir}" -N 10 --threads "${threads}"
