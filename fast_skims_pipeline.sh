@@ -74,7 +74,6 @@ function get_read_length {
 
 SCRIPT_DIR="/home/echarvel/skimming_scripts/"
 
-input=$1
 def_out_dir="./OUT_fast_skims_pipeline"
 def_threads=2
 def_merge="T"
@@ -84,28 +83,11 @@ def_sampling=30000000
 
 file_ending1="1.fq.gz"
 
-usage="bash ${BASH_SOURCE[0]} -h [input] [-o output directory] [-t threads]
-
-Runs nuclear read processing pipeline on a batch of merged and decontaminated reads in reference to a constructed library:
-    
-    Positional Arguments:
-    input       Path to an input directory 
-
-    Optional inputs:
-    -h          Display this help message and exit.
-    -o          Path to directory of pipeline's output. [Default = "./OUT_fast_skims_pipeline"]
-    -t          Threads to be used by all software in this pipeline (seqtk sample, Skmer, RESPECT). [Default = 2]
-    -m          (T or F) Boolean, tells pipeline whether to merge or interleave paired-end reads. [Default = T] 
-    -s          Size of initial sample in number of reads. [Default = 30000000]
-    -c          Target coverage for subsampling. [Default = 4]
-    -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
-"
-## TODO: Implement different number of skmer threads, post-processing pipelines, custom decontmination directories.
-
-while getopts "ho:t:" opts 
+while getopts ":hi:o:t:m:s:c:d:" opts 
 do
-    case "${opts}" in
+    case $opts in
         h) echo "${usage}"; exit;;
+        i) input="${OPTARG}" ;;
         o) out_dir="${OPTARG}";;
         t) threads="${OPTARG}";;
         m) merge="${OPTARG}";;
@@ -117,9 +99,9 @@ do
 done
 
 # setting default values...
+[[ -z $input ]] && echo "NO INPUT GIVEN"; exit 1
 [[ -z $out_dir ]] && out_dir="${def_out_dir}"
-# [[ -z $threads ]] && threads="${def_threads}"
-if [ -z "${threads+x}" ]; then threads="${def_threads}"; fi
+[[ -z $threads ]] && threads="${def_threads}"
 [[ -z $merge ]] && merge="${def_merge}"
 [[ -z $initial_sampling ]] && initial_sampling="${def_sampling}"
 [[ -z $mean_cov ]] && mean_cov="${def_mean_cov}"
