@@ -118,7 +118,8 @@ done
 
 # setting default values...
 [[ -z $out_dir ]] && out_dir="${def_out_dir}"
-[[ -z $threads ]] && threads="${def_threads}"
+# [[ -z $threads ]] && threads="${def_threads}"
+if [ -z ${threads+x} ]; then threads="${def_threads}"
 [[ -z $merge ]] && merge="${def_merge}"
 [[ -z $initial_sampling ]] && initial_sampling="${def_sampling}"
 [[ -z $mean_cov ]] && mean_cov="${def_mean_cov}"
