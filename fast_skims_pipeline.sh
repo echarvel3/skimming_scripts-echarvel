@@ -78,6 +78,7 @@ function get_read_length {
 ############
 
 SCRIPT_DIR="/home/echarvel/skimming_scripts/"
+#SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 #input=$1
 def_out_dir="./OUT_fast_skims_pipeline"
