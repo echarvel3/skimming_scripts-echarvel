@@ -106,7 +106,7 @@ Runs nuclear read processing pipeline on a batch of merged and decontaminated re
     -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
     -p          Number of processes used by Skmer (large numbers of processes impacts memory). [Default = 2]
 "
-## TODO: Implement different number of skmer threads, post-processing pipelines, custom decontmination directories.
+## TODO: Implement different number of post-processing pipelines, annotation file for skmer2, steps for pipeline.
 
 while getopts ":hi:o:t:m:s:c:d:p:" opts 
 do
@@ -119,7 +119,7 @@ do
         s) initial_sampling="${OPTARG}";;
         c) mean_cov="${OPTARG}";;
         d) cov_dev="${OPTARG}";;
-        p) procs="${OPTARG}"
+        p) procs="${OPTARG}" ;;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
