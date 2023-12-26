@@ -4,30 +4,29 @@
 ## FUNCTIONS ##
 ###############
 
-function pwait {
-    while [ $(jobs -p | wc -l) -ge $1 ]; do
-        sleep 1
-    done
-}
-
 function subsample {
     local in_file="${1}"
     local sample_size="${2}"
+    local out_dir="${3}"
+    local subsampled_dir="${4}"
     local subsampled_out="subsampled_${in_file##*/}"
-
-    seqtk sample -s100 "${in_file}" "${sample_size}" > "${out_dir}/subsampled_reads/${subsampled_out}"
+	
+    echo "${in_file}" "${sample_size}"
+    seqtk sample -s100 -2 "${in_file}" "${sample_size}" > "${out_dir}/${subsampled_dir}/${subsampled_out}"
 }
 
 function calc_new_subsample {
-    local sample=${1}
+    local sample="${1}"
+    local out_dir="${2}"
+    local mean_cov="${3}"
+    local initial_sampling="${4}"
+    local input="${5}"
     local genome=${sample%.hist,*}
     local cov=${sample#*,}
     local optimal_samp=$(bc <<< "${mean_cov}*${initial_sampling}/${cov}")
 
-    echo $genome $cov $optimal_samp $input $out_dir
-
-    if [ ${sample%%_*} == "subsampled" ]; then
-        subsample "${input}/${genome#"subsampled_"}.fastq" "${optimal_samp}" "${out_dir}"
+    if echo ${genome} | grep -q "subsampled_"; then
+        subsample "${input}/${genome#unclassified-seq_subsampled_*}.fastq" "${optimal_samp}" "${out_dir}" "subsampled_reads2"
     fi
 }
 
@@ -36,12 +35,12 @@ function run_skmer {
     local skmer_lib="${2}"
 
     if [ -d "${out_dir}/skmer_library" ]; then
-        skmer query -a "${in_file}" "${skmer_lib}/skmer_library" -p "${threads}"
+        skmer query -a "${in_file}" "${skmer_lib}/skmer_library" -p "2"
     else
         temp_input=$(mktemp -d "${skmer_lib}/temp_in.XXXXXX")
         ln -s $(realpath "${in_file}") "${temp_input}"
 
-        skmer reference "${temp_input}" -l "${skmer_lib}/skmer_library" -p "${threads}"
+        skmer reference "${temp_input}" -l "${skmer_lib}/skmer_library" -p "2"
         rm -r "${temp_input}"
     fi
 }
@@ -71,7 +70,7 @@ function get_read_length {
 ############
 ## INPUTS ##
 ############
-input=$1
+#input=$1
 def_out_dir="./OUT_subsample_and_estimate"
 def_threads=2
 def_mean_cov=4
@@ -124,11 +123,11 @@ low_cov="$(bc <<< $mean_cov - $cov_dev)"
 mkdir "${out_dir}"
 mkdir "${out_dir}/subsampled_reads/"
 
-for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 > 10485760' | cut -f 2 | xargs); do
-   ## Initial Subampling for Initial Number of Reads (Parallelized) ## 
-   subsample "${file}" "${initial_sampling}" &
-   pwait $(($threads-1))
-done
+export -f subsample
+du --summarize --block-size=1K "${input}/"* \
+	| awk '$1 > 10485760' \
+	| cut -f 2 \
+	| parallel -j "${threads}" subsample {} "${initial_sampling}" "${out_dir}" "subsampled_reads"
 
 for file in $(du --summarize --block-size=1K "${input}/"* | awk '$1 <= 10485760' | cut -f 2 | xargs); do
     ## Creating symlinks for small files ##
@@ -162,10 +161,10 @@ for sample in $coverages; do
     rmdir "${out_dir}/skmer_library/${genome}"
     rm "${out_dir}/respect_data/${genome}.hist"
     rm "${out_dir}/subsampled_reads/${genome}.f*" 
-
-    calc_new_subsample "${sample}" &
-    pwait $(($threads-1))
 done
+
+export -f calc_new_subsample
+parallel -j "${threads}" calc_new_subsample {} "${out_dir}" "${mean_cov}" "${initial_sampling}" "${input}" ::: "${coverages}"
 
 if [ "$(ls ${out_dir}/skmer_library/)" == "CONFIG" ]; then 
     rm "${out_dir}/skmer_library/CONFIG"
