@@ -17,7 +17,7 @@ The `conda_source.sh` [script](https://github.com/smirarab/skimming_scripts/blob
 mkdir tutorial
 cd tutorial
 
-conda create --name tutorial
+conda create --name tutorial python=3.8
 conda activate tutorial
 
 ### Order matters here
