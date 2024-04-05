@@ -66,9 +66,17 @@ git clone https://github.com/bo1929/CONSULT-II
 cd CONSULT-II/
 make all
 ### Installing relevant library for bacterial/archeal contaminant removal using CONSULT-II 
-wget https://ter-trees.ucsd.edu/data/consult/v1.0.0/all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL.tar.gz
-tar -xvf all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL.tar.gz 
-cd all_nbrhood_kmers_k32_p3l2clmn7_K15-map2-171_ToL
+# (Large Library) 140 GBs
+# wget https://ter-trees.ucsd.edu/data/consult/CONSULT-II/library-v020-WoL140G.tar.gz
+
+# *recommended* (Medium Library) 32 GBs
+# wget https://ter-trees.ucsd.edu/data/consult/CONSULT-II/library-v030-WoL32G.tar.gz
+
+# (Lightweight Library) 18 GBs
+# wget https://ter-trees.ucsd.edu/data/consult/CONSULT-II/library-v030-WoL18G.tar.gz
+
+tar -xvf $LIBRARY_DIR 
+cd $LIBRARY_DIR
 for f in `ls ./`; do d=${f##*_}; mv $f $d; done
 cd ../..
 
