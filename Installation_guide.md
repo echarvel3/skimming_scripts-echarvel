@@ -72,7 +72,7 @@ tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s
 ###Remember to edit the conda_source.sh file (~/tutorial/skimming_scripts/conda_source.sh) with your env name; tutorial here
 ###Keeping all the pipelines in the same directory would be recommended
 
-bash ../fast_skims_pipeline.sh -x -i ./test/skims/
+bash ../fast_skims_pipeline.sh -i ./test/skims/
 
 ```
 
