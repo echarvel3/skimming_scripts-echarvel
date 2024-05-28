@@ -62,40 +62,18 @@ git clone git@github.com:smirarab/skimming_scripts.git
 cd skimming_scripts
 
 ### Installing CONSULT-II
-git clone https://github.com/bo1929/CONSULT-II
-cd CONSULT-II/
-make all
-### Installing relevant library for bacterial/archeal contaminant removal using CONSULT-II 
-# (Large Library) 140 GBs
-# wget https://ter-trees.ucsd.edu/data/consult/CONSULT-II/library-v020-WoL140G.tar.gz
-
-# *recommended* (Medium Library) 32 GBs
-# wget https://ter-trees.ucsd.edu/data/consult/CONSULT-II/library-v030-WoL32G.tar.gz
-
-# (Lightweight Library) 18 GBs
-# wget https://ter-trees.ucsd.edu/data/consult/CONSULT-II/library-v030-WoL18G.tar.gz
-
-tar -xvf $LIBRARY_DIR 
-cd $LIBRARY_DIR
-for f in `ls ./`; do d=${f##*_}; mv $f $d; done
-cd ../..
-
-### Installing kraken2
-git clone https://github.com/DerrickWood/kraken2
-cd kraken2/
-./install_kraken2.sh ./
-### Installing relevant library for human contaminant removal using kraken2
-./kraken2-build --download-taxonomy --db krakenlib
-./kraken2-build --download-library human --db krakenlib/
-./kraken2-build --build --db krakenlib/
-cd ..
+git clone https://github.com/bo1929/KRANK.git
+make -C KRANK
+cd ./KRANK/
+wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
 
 ###Running the pipeline on sample data
 ###Remember to edit the conda_source.sh file (~/tutorial/skimming_scripts/conda_source.sh) with your env name; tutorial here
 ###Keeping all the pipelines in the same directory would be recommended
 cd test
 var=`pwd`
-bash ../skims_processing_pipeline.sh -x $var/skims
+bash ../fast_skims_pipeline.sh -x $var/skims
 
 ```
 
