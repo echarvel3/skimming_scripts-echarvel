@@ -15,17 +15,7 @@ function subsample {
 	
     echo "${in_file}" "${sample_size}"
 
-    in_file1=$(mktemp "${out_dir}/tmp.XXXXXX")
-    in_file2=$(mktemp "${out_dir}/tmp.XXXXXX")
-
-    ${SCRIPT_DIR}/bbmap/reformat.sh in="${in_file}" out1="${in_file1}" out2="${in_file2}" overwrite=true
-
-    seqtk sample -s${RANDOM_SEED} -2 "${in_file1}" "$(echo ${sample_size}/2 | bc)" > "${out_dir}/temp2-${in_file##*/}"
-    seqtk sample -s${RANDOM_SEED} -2 "${in_file2}" "$(echo ${sample_size}/2 | bc)" > "${out_dir}/temp1-${in_file##*/}"
-    rm "${in_file1}" "${in_file2}"
-    
-    ${SCRIPT_DIR}/bbmap/reformat.sh in1="${out_dir}/temp2-${in_file##*/}" in2="${out_dir}/temp1-${in_file##*/}" out="${out_dir}/${in_file##*/}" overwrite=true
-    rm "${out_dir}/temp1-${in_file##*/}" "${out_dir}/temp2-${in_file##*/}"
+    seqtk sample -s${RANDOM_SEED} -2 "${in_file}" "${sample_size}" > "${out_dir}/${in_file##*/}"
 }
 
 function calc_new_subsample {
