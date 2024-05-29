@@ -50,6 +50,17 @@ cd ..
 
 echo "Installing KRANK..."
 git clone https://github.com/bo1929/KRANK.git
+system_type=$(uname -s)
+if [ "$system_type" = "Darwin" ]; then
+  # install homebrew if it's missing
+  if ! command -v brew >/dev/null 2>&1; then
+    echo "Installing homebrew..."
+		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+  # install needed libraries for OpenMP parallelism
+  brew install gcc libomp llvm
+  sed -i -e 's/g++/g++-14/' ./KRANK/makefile
+fi
 make -C ./KRANK/
 cd ./KRANK/
 echo "Downloading Bacterial Decontamination Library..."
