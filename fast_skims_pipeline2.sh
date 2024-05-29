@@ -136,7 +136,7 @@ mkdir --parents "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 ## DECONTAMINATION ##
 #####################
 
-ech "DECONTAMINATING DATA..."
+echo "DECONTAMINATING DATA..."
 
 for file in $(realpath ${INPUT}/*); do
 	# ...creates input map for KRANK input...
@@ -162,8 +162,8 @@ for file in $(realpath "${INPUT}/*${READ_1}"); do
 	cat ${OUTPUT_DIRECTORY}/krank_output/krank_reports/classification_info-${read1} | grep --perl-regexp '\tU\t'  | cut -f1 | sed -e 's/@//g' > "${tmp_dir}/unclass_readnames1.txt"
 	cat ${OUTPUT_DIRECTORY}/krank_output/krank_reports/classification_info-${read2} | grep --perl-regexp '\tU\t'  | cut -f1 | sed -e 's/@//g' > "${tmp_dir}/unclass_readnames2.txt"
 
-	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${INPUT}/${read1} in2=${INPUT}/${read2} out1="${tmp_dir}/${read1}" out2="${tmp_dir}/${read2}" threads=${NUM_THREADS} names=./unclass_readnames1.txt include=true overwrite=true
-	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${tmp_dir}/${read2} in2=${tmp_dir}/${read1} out1="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read2}" out2="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read1}" threads=${NUM_THREADS} names=./unclass_readnames2.txt include=true overwrite=true
+	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${INPUT}/${read1} in2=${INPUT}/${read2} out1="${tmp_dir}/${read1}" out2="${tmp_dir}/${read2}" threads=${NUM_THREADS} names="${tmp_dir}/unclass_readnames1.txt" include=true overwrite=true
+	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${tmp_dir}/${read2} in2=${tmp_dir}/${read1} out1="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read2}" out2="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read1}" threads=${NUM_THREADS} names="${tmp_dir}/unclass_readnames2.txt" include=true overwrite=true
 
 	rm ${tmp_dir}/${read2} ${tmp_dir}/${read1}
 done
@@ -198,7 +198,6 @@ for file in $(ls "${OUTPUT_DIRECTORY}/bbmap_reads/"); do
 	run_skmer "${OUTPUT_DIRECTORY}/bbmap_reads/${file}" "${OUTPUT_DIRECTORY}"
 done
 skmer distance "${OUTPUT_DIRECTORY}/skmer_library/" -p "${NUM_THREADS}" -o "${OUTPUT_DIRECTORY}/distance_matrix"
-
 
 rm -r "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 
