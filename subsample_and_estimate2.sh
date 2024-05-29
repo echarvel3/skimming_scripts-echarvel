@@ -164,7 +164,7 @@ for coverage in ${TARGET_COV}; do
 	done
 	skmer distance  "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -o "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/distance_matrix"
 
-
+	mkdir --parents "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/"
 	for directory in $(find "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
     		file=${directory##*/}
     		read_len=$(get_read_length "${directory}/${file}.dat")
