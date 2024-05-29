@@ -43,6 +43,7 @@ function calc_new_subsample {
 function run_skmer {
     local in_file="${1}"
     local output="${2}"
+    local SKMER_PROCESSORS="${3}"
 
     if [ -d "${output}/skmer_library" ]; then
         skmer query -a "${in_file}" "${output}/skmer_library" -p "${SKMER_PROCESSORS}" -o "${output}/temp_q"
@@ -81,13 +82,12 @@ Runs nuclear read processing pipeline on a batch of merged and decontaminated re
     Arguments:
     -h          Display this help message and exit.
     -i		    Path to INPUT directory.
-    -o          Path to directory of pipeline's OUTPUT. [Default = "./OUT_fast_skims_pipeline"]
-    -t          Threads to be used by most software in this pipeline (bbmap, seqtk sample, RESPECT). [Default = 2]
-    -m          (T or F) Boolean, tells pipeline whether to merge or interleave paired-end reads. [Default = T] 
-    -s          Size of initial sample in number of reads. [Default = 30000000]
+    -o          Path to directory of pipeline's OUTPUT. [Default = "./fast-skims_pipeline"]
+    -t          Threads to be used by most software in this pipeline (bbmap, seqtk sample, RESPECT). [Default = 1]
     -c          Target coverage for subsampling. [Default = 4]
-    -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
-    -p          Number of processes used by Skmer (large numbers of processes impacts memory). [Default = 2]
+    -p          Number of processes used by Skmer (large numbers of processes impacts memory). [Default = 1]
+    -f          Read1 file ending. [Default = 1.fq]
+    -r          Read2 file ending. [Default = 2.fq]
 "
 ## TODO: Implement different number of skmer threads, post-processing pipelines, custom decontmination directories.
 
@@ -129,76 +129,16 @@ mkdir "${OUTPUT_DIRECTORY}"
 exec 3>&1 1>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 set -x
 
-mkdir --parents "${OUTPUT_DIRECTORY}/krank_output/krank_reports/"
-mkdir --parents "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
-
-#####################
-## DECONTAMINATION ##
-#####################
-
-ech "DECONTAMINATING DATA..."
-
-for file in $(realpath ${INPUT}/*); do
-	# ...creates input map for KRANK input...
-	echo -e "${file##*/}\t${file}"
-done > ${OUTPUT_DIRECTORY}/input_map.tsv
-
-# ...running KRANK decontamination...
-${SCRIPT_DIR}/KRANK/krank query \
-	--library-dir ${SCRIPT_DIR}/KRANK/lib_rand_free-k29_w35_h13_b16_s8/ \
-	--query-file ${OUTPUT_DIRECTORY}/input_map.tsv \
-	--max-match-distance 5 \
-	--total-vote-threshold 0.03 \
-	--num-threads ${NUM_THREADS} \
-	--output-dir "${OUTPUT_DIRECTORY}/krank_output/krank_reports/" && echo "Decontamination step is done!"
-
-tmp_dir=$(mktemp --directory "${OUTPUT_DIRECTORY}/krank_output/tmp.XXXXXXX")
-
-# ...creates decontaminated read files from KRANK output...
-for file in $(realpath "${INPUT}/*${READ_1}"); do
-	read1=${file##*/}
-	read2=${read1%${READ_1}}${READ_2}
-
-	cat ${OUTPUT_DIRECTORY}/krank_output/krank_reports/classification_info-${read1} | grep --perl-regexp '\tU\t'  | cut -f1 | sed -e 's/@//g' > "${tmp_dir}/unclass_readnames1.txt"
-	cat ${OUTPUT_DIRECTORY}/krank_output/krank_reports/classification_info-${read2} | grep --perl-regexp '\tU\t'  | cut -f1 | sed -e 's/@//g' > "${tmp_dir}/unclass_readnames2.txt"
-
-	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${INPUT}/${read1} in2=${INPUT}/${read2} out1="${tmp_dir}/${read1}" out2="${tmp_dir}/${read2}" threads=${NUM_THREADS} names=./unclass_readnames1.txt include=true overwrite=true
-	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${tmp_dir}/${read2} in2=${tmp_dir}/${read1} out1="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read2}" out2="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read1}" threads=${NUM_THREADS} names=./unclass_readnames2.txt include=true overwrite=true
-
-	rm ${tmp_dir}/${read2} ${tmp_dir}/${read1}
-done
-rm -r "${tmp_dir}"
-
-##################################
-## BBTOOLS: TRIMMING AND DEDUPE ##
-##################################
-
-echo "PERFORMING BBMAP OPERATIONS..."
-
-mkdir "${OUTPUT_DIRECTORY}/bbmap_reads/"
-
-for file in $(realpath "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/*${READ_1}"); do
-        read1=$file
-        read2=${read1%${READ_1}}${READ_2}
-	out_read=${file##*/}
-
-        if test -f "$read2"; then
-            ${SCRIPT_DIR}/bbmap_pipeline.sh "$read1" "$read2" "${OUTPUT_DIRECTORY}/bbmap_reads/${out_read%${READ_1}}.fastq" 
-        fi     
-        rm ./tmp.*   
-done
-
 ###########
 ## SKMER ##
 ###########
 
 echo "OBTAINING RAW GENOME DISTANCES..."
 
-for file in $(ls "${OUTPUT_DIRECTORY}/bbmap_reads/"); do
-	run_skmer "${OUTPUT_DIRECTORY}/bbmap_reads/${file}" "${OUTPUT_DIRECTORY}"
+for file in $(ls "${INPUT}"); do
+	run_skmer "${INPUT}/${file}" "${OUTPUT_DIRECTORY}" "${SKMER_PROCESSORS}"
 done
 skmer distance "${OUTPUT_DIRECTORY}/skmer_library/" -p "${NUM_THREADS}" -o "${OUTPUT_DIRECTORY}/distance_matrix"
-
 
 rm -r "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 
@@ -230,7 +170,7 @@ echo "PERFORMING SKIMMING OPERATIONS ON SUBSAMPLED DATA..."
 
 for coverage in ${TARGET_COV}; do
 	for file in $(ls "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/"); do
-		run_skmer "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/${file}" "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/"
+		run_skmer "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/${file}" "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/" "${SKMER_PROCESSORS}"
 	done
 	skmer distance  "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -o "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/distance_matrix"
 

@@ -11,21 +11,23 @@ echo "Please enter:"
 read -p "Name of New Conda Environment: -> " conda_environment
 
 conda create --name ${conda_environment} python=3.8 --yes --quiet
-conda activate ${conda_environment}
 
-echo "Adding Channels to Conda Enviroment:(${conda_environment})..."
+eval "$(conda shell.bash hook)"
+conda activate ${conda_environment} && echo "(${conda_environment}) successfully created!"
+
+echo "Adding Channels to Conda..."
 conda config --add channels defaults
 conda config --add channels bioconda
 conda config --add channels conda-forge
 conda config --add channels https://conda.anaconda.org/gurobi
 
 echo "Installing SKMER..."
-conda install skmer==3.2.1 --yes --quiet
-skmer -h || echo "ERROR: SKMER INSTALLATION FAILED." && exit 1 
+conda install -n ${conda_environment} skmer=3.2.1 --yes --quiet
+which skmer || echo "ERROR: SKMER INSTALLATION FAILED." 
 
-jellyfish -h || echo "Installing Jellyfish..." && conda install jellyfish --yes --quiet
-seqtk -h || echo "Installing SEQTK..." && conda install seqtk --yes --quiet
-mash -h || echo "Installing MASH..." && conda install mash --yes --quiet
+which jellyfish || conda install -n ${conda_environment} jellyfish --yes --quiet
+which seqtk || conda install -n ${conda_environment} seqtk --yes --quiet
+which mash || conda install -n ${conda_environment} mash --yes --quiet
 
 echo "Installing GUROBI..."
 conda install gurobi --yes --quiet
@@ -51,7 +53,7 @@ git clone https://github.com/bo1929/KRANK.git
 make -C ./KRANK/
 cd ./KRANK/
 echo "Downloading Bacterial Decontamination Library..."
-wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz --no-check-certificate
 tar -zxf ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
 rm ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
 cd ../

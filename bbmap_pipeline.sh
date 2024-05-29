@@ -45,16 +45,16 @@ for x in `ls ${split}_R1_*`; do
 	rm ${x/_R1_/_R2_} $x
 
 	# Deduplicaiton
-	$bbmapdir/bbmap/dedupe.sh -Xmx${dukmem}g -Xms${dukmem}g in1=${x/_R1_/_R1DUK_} in2=${x/_R1_/_R2DUK_} out=${x/_R1_/_OUT_} overwrite=true
+	$bbmapdir/bbmap/dedupe.sh -Xmx${dukmem}g -Xms${dukmem}g in1=${x/_R1_/_R1DUK_} in2=${x/_R1_/_R2DUK_} out=${x/_R1_/_MERGED_} overwrite=true
 	rm ${x/_R1_/_R1DUK_} ${x/_R1_/_R2DUK_}
 
 	# reformat back (to fastq?)
-	$bbmapdir/bbmap/reformat.sh in=${x/_R1_/_OUT_} out1=${x/_R1_/_OUT1_} out2=${x/_R1_/_OUT2_} overwrite=true
-	rm ${x/_R1_/_OUT_}
+#	$bbmapdir/bbmap/reformat.sh in=${x/_R1_/_OUT_} out1=${x/_R1_/_OUT1_} out2=${x/_R1_/_OUT2_} overwrite=true
+#	rm ${x/_R1_/_OUT_}
 	
 	# merge the two reads
-	$bbmapdir/bbmap/bbmerge.sh in1=${x/_R1_/_OUT1_} in2=${x/_R1_/_OUT2_} out1=${x/_R1_/_MERGED_} overwrite=true mix=t
-	rm ${x/_R1_/_OUT1_} ${x/_R1_/_OUT2_}
+#	$bbmapdir/bbmap/bbmerge.sh in1=${x/_R1_/_OUT1_} in2=${x/_R1_/_OUT2_} out1=${x/_R1_/_MERGED_} overwrite=true mix=t
+#	rm ${x/_R1_/_OUT1_} ${x/_R1_/_OUT2_}
 done
 
 cat  ${split}_MERGED_* > $3
