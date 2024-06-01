@@ -53,7 +53,7 @@ function run_skmer {
 
         skmer reference "${temp_input}" -l "${output}/skmer_library" -p "${SKMER_PROCESSORS}" -o "${output}/temp_q"
         rm -r "${temp_input}"
-	rm "${output}/temp_q.txt"
+	rm ${output}/temp_q*
     fi
 }
 
@@ -145,7 +145,7 @@ done > ${OUTPUT_DIRECTORY}/input_map.tsv
 
 # ...running KRANK decontamination...
 ${SCRIPT_DIR}/KRANK/krank query \
-	--library-dir ${SCRIPT_DIR}/KRANK/lib_rand_free-k29_w35_h13_b16_s8/ \
+	--library-dir ${SCRIPT_DIR}/KRANK/lib_rand_free-k29_w35_h13_b16_s8/ ${SCRIPT_DIR}/KRANK/pangenome-05-2024-lib_rand_free-k29_w34_h13_b16_s8 \
 	--query-file ${OUTPUT_DIRECTORY}/input_map.tsv \
 	--max-match-distance 5 \
 	--total-vote-threshold 0.03 \
@@ -209,8 +209,8 @@ grep "" "${OUTPUT_DIRECTORY}/skmer_library/"*/*.dat | sed -e "s/:/\t/g" -e "s/^l
 
 echo "SUBSAMPLING DATA..."
 
-paste <(realpath "${OUTPUT_DIRECTORY}/bbmap_reads/"* | parallel -j "${NUM_THREADS}" wc --lines {} | awk '{x=$1/4; printf "%s\t%.0f", $2, x}' | sort) \
-	<(grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f2) |\
+paste <(realpath "${OUTPUT_DIRECTORY}/bbmap_reads/"* | parallel -j "${NUM_THREADS}" wc --lines {} | awk '{x=$1/4; printf "%s\t%.0f\n", $2, x}' | sort) \
+	<(grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3) |\
 	awk '{x=$2/$3; printf "%s\t%s\t%s\t%.0f\n", $1, $2, $3, x}' > "${OUTPUT_DIRECTORY}/read_counts.tsv"
 
 export -f subsample
@@ -234,11 +234,11 @@ for coverage in ${TARGET_COV}; do
 	skmer distance  "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -o "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/distance_matrix"
 
 	mkdir --parents "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/"
+	echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/hist_info.txt"
 	for directory in $(find "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
     		file=${directory##*/}
     		read_len=$(get_read_length "${directory}/${file}.dat")
 		
-		echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/hist_info.txt"
   		echo -e "${file}.hist\t${read_len}" >> "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/hist_info.txt"
 
     		ln --symbolic "$(realpath ${directory}/${file}.hist)" "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/"
