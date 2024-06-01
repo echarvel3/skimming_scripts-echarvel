@@ -44,7 +44,7 @@ function run_skmer {
 
         skmer reference "${temp_input}" -l "${output}/skmer_library" -p "${SKMER_PROCESSORS}" -o "${output}/temp_q"
         rm -r "${temp_input}"
-	rm "${output}/temp_q.txt"
+	rm ${output}/temp_q*
     fi
 }
 
@@ -72,12 +72,13 @@ Runs nuclear read processing pipeline on a batch of merged and decontaminated re
     Arguments:
     -h          Display this help message and exit.
     -i		    Path to INPUT directory.
-    -o          Path to directory of pipeline's OUTPUT. [Default = "./fast-skims_pipeline"]
-    -t          Threads to be used by most software in this pipeline (bbmap, seqtk sample, RESPECT). [Default = 1]
+    -o          Path to directory of pipeline's OUTPUT. [Default = "./OUT_fast_skims_pipeline"]
+    -t          Threads to be used by most software in this pipeline (bbmap, seqtk sample, RESPECT). [Default = 2]
+    -m          (T or F) Boolean, tells pipeline whether to merge or interleave paired-end reads. [Default = T] 
+    -s          Size of initial sample in number of reads. [Default = 30000000]
     -c          Target coverage for subsampling. [Default = 4]
-    -p          Number of processes used by Skmer (large numbers of processes impacts memory). [Default = 1]
-    -f          Read1 file ending. [Default = 1.fq]
-    -r          Read2 file ending. [Default = 2.fq]
+    -d          Sets top and bottom deviation thresholds for coverage (+ and - from target coverage). [Default = 1] 
+    -p          Number of processes used by Skmer (large numbers of processes impacts memory). [Default = 2]
 "
 ## TODO: Implement different number of skmer threads, post-processing pipelines, custom decontmination directories.
 
@@ -140,8 +141,8 @@ grep "" "${OUTPUT_DIRECTORY}/skmer_library/"*/*.dat | sed -e "s/:/\t/g" -e "s/^l
 
 echo "SUBSAMPLING DATA..."
 
-paste <(realpath "${OUTPUT_DIRECTORY}/bbmap_reads/"* | parallel -j "${NUM_THREADS}" wc --lines {} | awk '{x=$1/4; printf "%s\t%.0f", $2, x}' | sort) \
-	<(grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f2) |\
+paste <(realpath "${OUTPUT_DIRECTORY}/bbmap_reads/"* | parallel -j "${NUM_THREADS}" wc --lines {} | awk '{x=$1/4; printf "%s\t%.0f\n", $2, x}' | sort) \
+	<(grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3) |\
 	awk '{x=$2/$3; printf "%s\t%s\t%s\t%.0f\n", $1, $2, $3, x}' > "${OUTPUT_DIRECTORY}/read_counts.tsv"
 
 export -f subsample
@@ -160,16 +161,16 @@ echo "PERFORMING SKIMMING OPERATIONS ON SUBSAMPLED DATA..."
 
 for coverage in ${TARGET_COV}; do
 	for file in $(ls "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/"); do
-		run_skmer "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/${file}" "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/" "${SKMER_PROCESSORS}"
+		run_skmer "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/${file}" "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/"
 	done
 	skmer distance  "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -o "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/distance_matrix"
 
 	mkdir --parents "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/"
+	echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/hist_info.txt"
 	for directory in $(find "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
     		file=${directory##*/}
     		read_len=$(get_read_length "${directory}/${file}.dat")
 		
-		echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/hist_info.txt"
   		echo -e "${file}.hist\t${read_len}" >> "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/hist_info.txt"
 
     		ln --symbolic "$(realpath ${directory}/${file}.hist)" "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/respect/"
