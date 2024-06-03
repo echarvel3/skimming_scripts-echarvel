@@ -145,7 +145,7 @@ done > ${OUTPUT_DIRECTORY}/input_map.tsv
 
 # ...running KRANK decontamination...
 ${SCRIPT_DIR}/KRANK/krank query \
-	--library-dir ${SCRIPT_DIR}/KRANK/lib_rand_free-k29_w35_h13_b16_s8/ ${SCRIPT_DIR}/KRANK/pangenome-05-2024-lib_rand_free-k29_w34_h13_b16_s8 \
+	--library-dir ${SCRIPT_DIR}/KRANK/lib_reps_adpt-k29_w35_h13_b16_s8 ${SCRIPT_DIR}/KRANK/pangenome-05-2024-lib_rand_free-k29_w34_h13_b16_s8 \
 	--query-file ${OUTPUT_DIRECTORY}/input_map.tsv \
 	--max-match-distance 5 \
 	--total-vote-threshold 0.03 \
