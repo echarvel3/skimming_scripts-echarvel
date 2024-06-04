@@ -57,6 +57,21 @@ cd RESPECT
 python setup.py install
 cd ..
 ```
+Installing **KRANK** (for contamination removal)
+```
+git clone https://github.com/bo1929/KRANK.git
+make -C KRANK
+cd ./KRANK/
+wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+```
+Running the pipeline on sample data
+```
+gunzip ./test/skims/*
+bash ../fast_skims_pipeline2.sh -i ./test/skims/ -t "${threads}"
+
+```
+Optional.
 ```
 ### BBMap has been made available as a part of the repository and you can use it directly when we clone the repository later
 ### You can always run the code below to download BBMap separately, if you want to
@@ -71,19 +86,5 @@ cd ..
 ### chmod +x fastme-2.1.5/binaries/fastme-2.1.5-linux64
 ### Change "linux64" at the end if using other platforms (linux32 or windows).
 ### ./fastme-2.1.5/binaries/fastme-2.1.5-linux64 -h
-```
-Installing KRANK (for contamination removal)
-```
-git clone https://github.com/bo1929/KRANK.git
-make -C KRANK
-cd ./KRANK/
-wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
-tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
-```
-Running the pipeline on sample data
-```
-gunzip ./test/skims/*
-bash ../fast_skims_pipeline2.sh -i ./test/skims/ -t "${threads}"
-
 ```
 
