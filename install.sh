@@ -7,30 +7,32 @@
 
 #iThe `conda_source.sh` [script](https://github.com/smirarab/skimming_scripts/blob/master/conda_source.sh) is meant to allow users to edit the name of their conda environment to easily switch between various configurations. A sample conda environment configuration can be seen [here](https://github.com/smirarab/skimming_scripts/blob/master/Obsolete/environment.yml). 
 
-echo "Please enter:"
+echo -e "Setting up Conda environment... \nPlease enter:"
 read -p "Name of New Conda Environment: -> " conda_environment
 
-conda create --name ${conda_environment} python=3.8 --yes --quiet
+conda create --name "${conda_environment}" --file ./Obsolete/respect-spec-file.txt
+
+#conda create --name ${conda_environment} python=3.8 --yes --quiet
 
 eval "$(conda shell.bash hook)"
 conda activate ${conda_environment} && echo "(${conda_environment}) successfully created!"
 
-echo "Adding Channels to Conda..."
-conda config --add channels defaults
-conda config --add channels bioconda
-conda config --add channels conda-forge
-conda config --add channels https://conda.anaconda.org/gurobi
+#echo "Adding Channels to Conda..."
+#conda config --add channels defaults
+#conda config --add channels bioconda
+#conda config --add channels conda-forge
+#conda config --add channels https://conda.anaconda.org/gurobi
 
-echo "Installing SKMER..."
-conda install -n ${conda_environment} skmer=3.2.1 --yes --quiet
-which skmer || echo "ERROR: SKMER INSTALLATION FAILED." 
+#echo "Installing SKMER..."
+#conda install -n ${conda_environment} skmer=3.2.1 --yes --quiet
+#which skmer || echo "ERROR: SKMER INSTALLATION FAILED." 
 
-which jellyfish || conda install -n ${conda_environment} jellyfish --yes --quiet
-which seqtk || conda install -n ${conda_environment} seqtk --yes --quiet
-which mash || conda install -n ${conda_environment} mash --yes --quiet
+#which jellyfish || conda install -n ${conda_environment} jellyfish --yes --quiet
+#which seqtk || conda install -n ${conda_environment} seqtk --yes --quiet
+#which mash || conda install -n ${conda_environment} mash --yes --quiet
 
-echo "Installing GUROBI..."
-conda install gurobi --yes --quiet
+#echo "Installing GUROBI..."
+#conda install gurobi --yes --quiet
 
 echo "Finished Setting up Conda Environment: (${conda_environment})"
 echo "==================="
