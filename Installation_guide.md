@@ -1,18 +1,23 @@
 # Installation guide for Genome Skim processing pipelines
 
-To install the pipeline, run the script called **install.sh**, which should prompt you for a conda enviroment name, and should download and install all the tools correctly. Otherwise, you can install with the instructions below.
-
 **Important Note on Conda:** Most of the tools would be installed through the conda distribution within an activated conda environment in the working shell. 
 
 **Important note on Gurobi** : To be able to run Gurobi and RESPECT, you will need to create an academic license through this [link](https://www.gurobi.com/documentation/9.1/quickstart_mac/obtaining_a_grb_license.html). Download the license and transfer it to whatever computer or cluster you use. When Gurobi is run, it looks for the license file in the defualt locations. On the expiration of the license, you will have to repeat the procedure after removing the `gurobi.lic` file from its default location.
 
-### Install main tools
+## Installation Instructions
 
 Cloning the repository 
 ```
 git clone https://github.com/echarvel3/skimming_scripts-echarvel.git
 cd skimming_scripts-echarvel
 ```
+### Quick Installation
+To install the pipeline, run the script called **install.sh**, which should prompt you for a conda enviroment name, and should download and install all the tools correctly. Otherwise, you can install with the instructions below.
+```
+install.sh
+```
+### Manual Installation 
+
 You can **either**...
 _Quickly create conda environmet from spec file._ RECOMMENDED!
 ```
