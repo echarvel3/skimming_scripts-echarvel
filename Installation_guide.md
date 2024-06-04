@@ -8,7 +8,11 @@ To install the pipeline, run the script called **install.sh**, which should prom
 
 ### Install main tools
 
-
+Cloning the repository 
+```
+git clone https://github.com/echarvel3/skimming_scripts-echarvel.git
+cd skimming_scripts-echarvel
+```
 You can **either**...
 _Quickly create conda environmet from spec file._ RECOMMENDED!
 ```
@@ -38,11 +42,6 @@ conda install jellyfish seqtk mash
 ### Run this command to install gurobi solver for respect
 
 conda install gurobi 
-```
-Cloning the repository 
-```
-git clone https://github.com/echarvel3/skimming_scripts-echarvel.git
-cd skimming_scripts-echarvel
 ```
 Then install **RESPECT** (requires gurobi license!).
 ```
