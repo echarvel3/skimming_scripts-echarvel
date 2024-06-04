@@ -14,12 +14,13 @@ cd skimming_scripts-echarvel
 ### Quick Installation
 To install the pipeline, run the script called **install.sh**, which should prompt you for a conda enviroment name, and should download and install all the tools correctly. Otherwise, you can install with the instructions below.
 ```
-install.sh
+bash ./install.sh
 ```
 ### Manual Installation 
 
 You can **either**...
-_Quickly create conda environmet from spec file._ RECOMMENDED!
+_Quickly create conda environmet from spec file._ 
+!RECOMMENDED!
 ```
 conda create --name "${environment_name}" --file ./Obsolete/respect-spec-file.txt
 ```
