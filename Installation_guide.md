@@ -1,24 +1,23 @@
 # Installation guide for Genome Skim processing pipelines
 
+To install the pipeline, run the script called **install.sh**, which should prompt you for a conda enviroment name, and should download and install all the tools correctly. Otherwise, you can install with the instructions below.
+
 **Important Note on Conda:** Most of the tools would be installed through the conda distribution within an activated conda environment in the working shell. 
 
-* Whenever you are using any of the pipelines, make sure that you change the env name in the `conda_source.sh` [script](https://github.com/smirarab/skimming_scripts/blob/master/conda_source.sh). Refer to `CONDAENV=GSkim4` in the script where `GSkim4` should be changed to your environment's name corresponding to all the tool installations.
-* In the example below, we would change the `conda_source.sh` [script](https://github.com/smirarab/skimming_scripts/blob/master/conda_source.sh) to say `CONDAENV=tutorial`
-
-The `conda_source.sh` [script](https://github.com/smirarab/skimming_scripts/blob/master/conda_source.sh) is meant to allow users to edit the name of their conda environment to easily switch between various configurations. A sample conda environment configuration can be seen [here](https://github.com/smirarab/skimming_scripts/blob/master/Obsolete/environment.yml). 
-
-**Important note on Gurobi** : To be able to run Gurobi and RESPECT, you will need to create an academic license through this [link](https://www.gurobi.com/documentation/9.1/quickstart_mac/obtaining_a_grb_license.html). Downloadn the license and transfer it to whatever computer or cluster you use. This creates a license file and writes it to a default location (press Enter when it asks if you want to store it to the default location). When Gurobi is run, it looks for the license file in the defualt locations. On the expiration of the license, you will have to repeat the procedure after removing the `gurobi.lic` file from its default location.
-
-**Important note on Git** : To be able to clone the repository, you will need to setup your public SSH key on your Github profile. If not done, you can follow the steps [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) under "Generating a new SSH key" and then, following the steps [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) under "Adding a new SSH key to your account".
+**Important note on Gurobi** : To be able to run Gurobi and RESPECT, you will need to create an academic license through this [link](https://www.gurobi.com/documentation/9.1/quickstart_mac/obtaining_a_grb_license.html). Download the license and transfer it to whatever computer or cluster you use. When Gurobi is run, it looks for the license file in the defualt locations. On the expiration of the license, you will have to repeat the procedure after removing the `gurobi.lic` file from its default location.
 
 **Install main tools**
 
-```
-mkdir tutorial
-cd tutorial
 
-conda create --name tutorial python=3.8
-conda activate tutorial
+You can **either**...
+_Quickly create conda environmet from spec file._ RECOMMENDED!
+```
+conda create --name "${environment_name}" --file ./Obsolete/respect-spec-file.txt
+```
+**or** create from scratch.
+```
+conda create --name "${environment_name}" python=3.7
+conda activate "${environment_name}"
 
 ### Order matters here
 conda config --add channels defaults
@@ -36,7 +35,9 @@ conda install jellyfish seqtk mash
 
 ### Run this command to install gurobi solver for respect
 conda install gurobi 
-
+```
+Then install the rest of the tools.
+```
 ### Install RESPECT
 git clone https://github.com/shahab-sarmashghi/RESPECT.git
 cd RESPECT
