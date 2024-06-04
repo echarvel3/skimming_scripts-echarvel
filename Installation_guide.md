@@ -6,7 +6,7 @@ To install the pipeline, run the script called **install.sh**, which should prom
 
 **Important note on Gurobi** : To be able to run Gurobi and RESPECT, you will need to create an academic license through this [link](https://www.gurobi.com/documentation/9.1/quickstart_mac/obtaining_a_grb_license.html). Download the license and transfer it to whatever computer or cluster you use. When Gurobi is run, it looks for the license file in the defualt locations. On the expiration of the license, you will have to repeat the procedure after removing the `gurobi.lic` file from its default location.
 
-**Install main tools**
+### Install main tools
 
 
 You can **either**...
