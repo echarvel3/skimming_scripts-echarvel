@@ -25,25 +25,34 @@ conda config --add channels bioconda
 conda config --add channels conda-forge
 conda config --add channels https://conda.anaconda.org/gurobi
 
-### Instal Skmer
+### Install Skmer
+
 conda install skmer==3.2.1
 skmer -h
 
 ### The following tools should ideally be installed along with skmer. 
 ### If not, you can always run this command to install them separately.
+
 conda install jellyfish seqtk mash 
 
 ### Run this command to install gurobi solver for respect
+
 conda install gurobi 
 ```
-Then install the rest of the tools.
+Cloning the repository 
+```
+git clone https://github.com/echarvel3/skimming_scripts-echarvel.git
+cd skimming_scripts-echarvel
+```
+Then install **RESPECT** (requires gurobi license!).
 ```
 ### Install RESPECT
 git clone https://github.com/shahab-sarmashghi/RESPECT.git
 cd RESPECT
 python setup.py install
 cd ..
-
+```
+```
 ### BBMap has been made available as a part of the repository and you can use it directly when we clone the repository later
 ### You can always run the code below to download BBMap separately, if you want to
 ### wget -O bbmap.tar.gz https://sourceforge.net/projects/bbmap/files/BBMap_39.01.tar.gz/download
@@ -57,12 +66,9 @@ cd ..
 ### chmod +x fastme-2.1.5/binaries/fastme-2.1.5-linux64
 ### Change "linux64" at the end if using other platforms (linux32 or windows).
 ### ./fastme-2.1.5/binaries/fastme-2.1.5-linux64 -h
-
-### Cloning the repository 
-git clone git@github.com:smirarab/skimming_scripts.git
-cd skimming_scripts
-
-### Installing CONSULT-II
+```
+Installing KRANK (for contamination removal)
+```
 git clone https://github.com/bo1929/KRANK.git
 make -C KRANK
 cd ./KRANK/
