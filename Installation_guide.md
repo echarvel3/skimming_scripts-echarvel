@@ -74,12 +74,11 @@ make -C KRANK
 cd ./KRANK/
 wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
 tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
-
-###Running the pipeline on sample data
-###Remember to edit the conda_source.sh file (~/tutorial/skimming_scripts/conda_source.sh) with your env name; tutorial here
-###Keeping all the pipelines in the same directory would be recommended
-
-bash ../fast_skims_pipeline.sh -i ./test/skims/
+```
+Running the pipeline on sample data
+```
+gunzip ./test/skims/*
+bash ../fast_skims_pipeline2.sh -i ./test/skims/ -t "${threads}"
 
 ```
 
