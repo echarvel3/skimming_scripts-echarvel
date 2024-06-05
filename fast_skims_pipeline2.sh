@@ -88,10 +88,11 @@ Runs nuclear read processing pipeline on a batch of merged and decontaminated re
     -f		ending format for Read 1 of paired end reads (e.g. "_R1.fastq" or ".01.fq") [Default = 1.fq]
     -r		ending format for Read 2 of paired end reads (e.g. "_R2.fastq" or ".02.fq") [Default = 2.fq]
     -s		random seed used for all software in the pipeline.
+    -d		downsampling method (SKMER or RESPECT) [Default = SKMER]
 "
 ## TODO: Implement post-processing pipelines, custom decontmination directories.
 
-while getopts ":hi:o:t:c:p:f:r:s:" opts 
+while getopts ":hi:o:t:c:p:f:r:s:d:" opts 
 do
     case $opts in
         h) echo "${usage}"; exit;;
@@ -103,6 +104,7 @@ do
 	f) READ_1="${OPTARG}";;
 	r) READ_2="${OPTARG}";;
 	s) RANDOM_SEED="${OPTARG}";;
+	d) DOWNSAMPLING_VERSION="${OPTARG}";;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
@@ -112,23 +114,22 @@ done
 ####################
 
 [[ -z ${INPUT} ]] && echo "Input directory not given." && exit 1
+OUTPUT_DIRECTORY=${OUTPUT_DIRECTORY:-./fast-skims_results}
+mkdir "${OUTPUT_DIRECTORY}"
 
 exec 3>&1 1>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
-OUTPUT_DIRECTORY=${OUTPUT_DIRECTORY:-./fast-skims_results}
 NUM_THREADS=${NUM_THREADS:-1}
 TARGET_COV=${TARGET_COV:-4}
 SKMER_PROCESSORS=${SKMER_PROCESSORS:-1}
 READ_1=${READ_1:-1.fq}
 READ_2=${READ_2:-2.fq}
 RANDOM_SEED=${RANDOM_SEED:-100}
+DOWNSAMPLING_VERSION=${DOWNSAMPLING_VERSION:-SKMER}
 
 #################
 ## MAIN SCRIPT ##
 #################
-
-mkdir "${OUTPUT_DIRECTORY}"
-
 set -x
 
 mkdir --parents "${OUTPUT_DIRECTORY}/krank_output/krank_reports/"
@@ -139,7 +140,7 @@ mkdir --parents "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 #####################
 exec 1>&3
 echo "DECONTAMINATING DATA..."
-exec 3>&1
+exec 3>&1 
 exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
 
@@ -200,7 +201,7 @@ done
 ###########
 
 exec 1>&3
-echo "OBTAINING RAW GENOME DISTANCES..."
+echo "OBTAINING GENOME DISTANCES FROM FULL COVERAGE SEQUENCES..."
 exec 3>&1
 exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
@@ -214,6 +215,33 @@ rm -r "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 grep "" "${OUTPUT_DIRECTORY}/skmer_library/"*/*.dat | sed -e "s/:/\t/g" -e "s/^library.//" -e "s:/[^/]*.dat\t:\t:" | sort -k2 > "${OUTPUT_DIRECTORY}/skmer_stats.tsv"
 
 #############################
+## RUNNING RESPECT ON DATA ##
+#############################
+
+exec 1>&3
+echo "RUNNING RESPECT ON FULL COVERAGE SEQUENCES..."
+exec 3>&1
+exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
+
+mkdir --parents "${OUTPUT_DIRECTORY}/respect/"
+echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/respect/hist_info.txt"
+for directory in $(find "${OUTPUT_DIRECTORY}/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
+	file=${directory##*/}
+	read_len=$(get_read_length "${directory}/${file}.dat")
+		
+	echo -e "${file}.hist\t${read_len}" >> "${OUTPUT_DIRECTORY}/respect/hist_info.txt"
+
+	ln --symbolic "$(realpath ${directory}/${file}.hist)" "${OUTPUT_DIRECTORY}/respect/"
+done
+
+respect --input-directories "${OUTPUT_DIRECTORY}/respect/" \
+	--info-file "${OUTPUT_DIRECTORY}/respect/hist_info.txt" \
+	--output-directory "${OUTPUT_DIRECTORY}/" \
+	--spectra-output-size 50 \
+	--iterations 1000 \
+	--threads "${NUM_THREADS}"
+
+#############################
 ## SUBSAMPLING USING SEQTK ##
 #############################
 
@@ -222,8 +250,15 @@ echo "SUBSAMPLING DATA..."
 exec 3>&1
 exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
+coverages=$(mktemp "${OUTPUT_DIRECTORY}/coverages.XXXX")
+grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3 | sed -e 's/NA/1.0/g' > ${coverages}
+
+if [${DOWNSAMPLING_VERSION}=="RESPECT"]; then
+	cut -f1,4 estimated-parameters.txt | tail -n+2 | sort|  sed -e 's/hist\t/fastq\t/g' | cut -f2 | sed -e 's/NA/1.0/g' > ${coverages}
+fi
+
 paste <(realpath "${OUTPUT_DIRECTORY}/bbmap_reads/"* | parallel -j "${NUM_THREADS}" wc --lines {} | awk '{x=$1/4; printf "%s\t%.0f\n", $2, x}' | sort) \
-	<(grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3) |\
+	<(cat ${coverages}) |\
 	awk '{x=$2/$3; printf "%s\t%s\t%s\t%.0f\n", $1, $2, $3, x}' > "${OUTPUT_DIRECTORY}/read_counts.tsv"
 
 export -f subsample
