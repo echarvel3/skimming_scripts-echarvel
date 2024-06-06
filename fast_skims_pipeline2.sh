@@ -251,16 +251,17 @@ echo "SUBSAMPLING DATA..."
 exec 3>&1
 exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
-coverages=$(mktemp "${OUTPUT_DIRECTORY}/coverages.XXXX")
-grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3 | sed -e 's/NA/1.0/g' > ${coverages}
+tmp_coverages=$(mktemp "${OUTPUT_DIRECTORY}/coverages.XXXX")
+grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3 | sed -e 's/NA/1.0/g' > ${tmp_coverages}
 
-if [${DOWNSAMPLING_VERSION}=="RESPECT"]; then
-	cut -f1,4 estimated-parameters.txt | tail -n+2 | sort|  sed -e 's/hist\t/fastq\t/g' | cut -f2 | sed -e 's/NA/1.0/g' > ${coverages}
+if [[ "${DOWNSAMPLING_VERSION}" == "RESPECT" ]]; then
+	cut -f1,4 estimated-parameters.txt | tail -n+2 | sort|  sed -e 's/hist\t/fastq\t/g' | cut -f2 | sed -e 's/NA/1.0/g' > ${tmp_coverages}
 fi
 
 paste <(realpath "${OUTPUT_DIRECTORY}/bbmap_reads/"* | parallel -j "${NUM_THREADS}" wc --lines {} | awk '{x=$1/4; printf "%s\t%.0f\n", $2, x}' | sort) \
-	<(cat ${coverages}) |\
+	<(cat ${tmp_coverages}) |\
 	awk '{x=$2/$3; printf "%s\t%s\t%s\t%.0f\n", $1, $2, $3, x}' > "${OUTPUT_DIRECTORY}/read_counts.tsv"
+rm "${tmp_coverages}"
 
 export -f subsample
 export -f calc_new_subsample
