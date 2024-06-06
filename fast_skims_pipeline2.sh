@@ -8,11 +8,11 @@
 ###############
 
 function subsample {
-    SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     local in_file="${1}"
     local sample_size="${2}"
     local out_dir="${3}"
-	
+    local SCRIPT_DIR="${4}"
+    
     echo "${in_file}" "${sample_size}"
 
     in_file1=$(mktemp "${out_dir}/tmp.XXXXXX")
@@ -32,12 +32,13 @@ function calc_new_subsample {
     local sampling_data="${1}"
     local out_dir="${2}"
     local target_cov="${3}"
-
+    local SCRIPT_DIR="${4}"
+    
     local genome=$(echo $sampling_data | cut -f1 -d ',')
     local base_reads=$(echo $sampling_data | cut -f4 -d ',')
     local new_reads=$(bc <<< "${target_cov}*${base_reads}")
 
-    subsample "${genome}" "${new_reads}" "${out_dir}"
+    subsample "${genome}" "${new_reads}" "${out_dir}" "${SCRIPT_DIR}"
 }
 
 function run_skmer {
@@ -266,7 +267,7 @@ export -f calc_new_subsample
 
 for coverage in ${TARGET_COV}; do
 	mkdir --parents "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/"
-	parallel -j "${NUM_THREADS}" calc_new_subsample {} "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/" "${coverage}" ::: "$(cat ${OUTPUT_DIRECTORY}/read_counts.tsv | tr '\t' ',')"
+	parallel -j "${NUM_THREADS}" calc_new_subsample {} "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/" "${coverage}" "${SCRIPT_DIR}" ::: "$(cat ${OUTPUT_DIRECTORY}/read_counts.tsv | tr '\t' ',')"
 done
 
 #######################################################
