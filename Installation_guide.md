@@ -62,8 +62,8 @@ Installing **KRANK** (for contamination removal)
 git clone https://github.com/bo1929/KRANK.git
 make -C KRANK
 cd ./KRANK/
-wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
-tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+#wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+#tar -zxf ./https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
 ```
 Running the pipeline on sample data
 ```
