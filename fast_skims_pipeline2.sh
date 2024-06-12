@@ -93,7 +93,7 @@ Runs nuclear read processing pipeline on a batch of merged and decontaminated re
 "
 ## TODO: Implement post-processing pipelines, custom decontmination directories.
 
-while getopts ":hi:o:t:c:p:f:r:s:d:" opts 
+while getopts ":hi:o:t:c:p:f:r:s:d:l:" opts 
 do
     case $opts in
         h) echo "${usage}"; exit;;
@@ -106,6 +106,7 @@ do
 	r) READ_2="${OPTARG}";;
 	s) RANDOM_SEED="${OPTARG}";;
 	d) DOWNSAMPLING_VERSION="${OPTARG}";;
+	l) LIBRARIES="${OPTARG}";;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
@@ -127,6 +128,7 @@ READ_1=${READ_1:-1.fq}
 READ_2=${READ_2:-2.fq}
 RANDOM_SEED=${RANDOM_SEED:-100}
 DOWNSAMPLING_VERSION=${DOWNSAMPLING_VERSION:-SKMER}
+LIBRARIES=${LIBRARIES:-"${SCRIPT_DIR}/KRANK/lib_reps_adpt-k29_w35_h13_b16_s8 ${SCRIPT_DIR}/KRANK/pangenome-05-2024-lib_rand_free-k29_w34_h13_b16_s8"}
 
 #################
 ## MAIN SCRIPT ##
@@ -152,7 +154,7 @@ done > ${OUTPUT_DIRECTORY}/input_map.tsv
 
 # ...running KRANK decontamination...
 ${SCRIPT_DIR}/KRANK/krank query \
-	--library-dir ${SCRIPT_DIR}/KRANK/lib_reps_adpt-k29_w35_h13_b16_s8 ${SCRIPT_DIR}/KRANK/pangenome-05-2024-lib_rand_free-k29_w34_h13_b16_s8 \
+	--library-dir ${LIBRARIES} \
 	--query-file ${OUTPUT_DIRECTORY}/input_map.tsv \
 	--max-match-distance 5 \
 	--total-vote-threshold 0.03 \
@@ -174,6 +176,9 @@ for file in $(realpath "${INPUT}/*${READ_1}"); do
 
 	rm ${tmp_dir}/${read2} ${tmp_dir}/${read1}
 done
+
+${SCRIPT_DIR}/make_decontam_figs.sh "order" "${OUTPUT_DIRECTORY}/krank_output/krank_reports/" "${OUTPUT_DIRECTORY}"
+
 rm -r "${tmp_dir}"
 
 ##################################
@@ -213,34 +218,51 @@ skmer distance "${OUTPUT_DIRECTORY}/skmer_library/" -p "${NUM_THREADS}" -o "${OU
 
 rm -r "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 
+### post processing for skmer data...
+bash ${SCRIPT_DIR}/tsv_to_phymat.sh "${OUTPUT_DIRECTORY}/distance_matrix.txt" "${OUTPUT_DIRECTORY}/distance_matrix.phy"
+
+${SCRIPT_DIR}/fastme-2.1.5/binaries/fastme-2.1.5-linux64  -i "${OUTPUT_DIRECTORY}/distance_matrix.phy"  -o "${OUTPUT_DIRECTORY}/skmer_tree.tre"
+
+echo '
+	m=as.matrix(read.csv("'${OUTPUT_DIRECTORY}'/distance_matrix.txt",sep="\t",row.names=1)); 
+	pdf("'${OUTPUT_DIRECTORY}'/skmer_figures.pdf", width=12,height=9); 
+	plot(hclust(as.dist(m))); 
+	heatmap(m, scale = "none"); 
+	dev.off(); 
+	write.table(file="'${OUTPUT_DIRECTORY}'/distance_matrix.txt",format(data.frame(name = row.names(m), m),digits=3),qu=F,sep="\t",row.names = FALSE);"
+	' | R --vanilla
+
 grep "" "${OUTPUT_DIRECTORY}/skmer_library/"*/*.dat | sed -e "s/:/\t/g" -e "s/^library.//" -e "s:/[^/]*.dat\t:\t:" | sort -k2 > "${OUTPUT_DIRECTORY}/skmer_stats.tsv"
 
 #############################
 ## RUNNING RESPECT ON DATA ##
 #############################
 
-exec 1>&3
-echo "RUNNING RESPECT ON FULL COVERAGE SEQUENCES..."
-exec 3>&1
-exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
+if [[ "${DOWNSAMPLING_VERSION}" == "RESPECT" ]]; then
 
-mkdir --parents "${OUTPUT_DIRECTORY}/respect/"
-echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/respect/hist_info.txt"
-for directory in $(find "${OUTPUT_DIRECTORY}/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
-	file=${directory##*/}
-	read_len=$(get_read_length "${directory}/${file}.dat")
-		
-	echo -e "${file}.hist\t${read_len}" >> "${OUTPUT_DIRECTORY}/respect/hist_info.txt"
+	exec 1>&3
+	echo "RUNNING RESPECT ON FULL COVERAGE SEQUENCES..."
+	exec 3>&1
+	exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
-	ln --symbolic "$(realpath ${directory}/${file}.hist)" "${OUTPUT_DIRECTORY}/respect/"
-done
+	mkdir --parents "${OUTPUT_DIRECTORY}/respect/"
+	echo -e "Input\tread_length" > "${OUTPUT_DIRECTORY}/respect/hist_info.txt"
+	for directory in $(find "${OUTPUT_DIRECTORY}/skmer_library/" -maxdepth 1 -mindepth 1 -type d); do
+		file=${directory##*/}
+		read_len=$(get_read_length "${directory}/${file}.dat")
+			
+		echo -e "${file}.hist\t${read_len}" >> "${OUTPUT_DIRECTORY}/respect/hist_info.txt"
 
-respect --input-directories "${OUTPUT_DIRECTORY}/respect/" \
-	--info-file "${OUTPUT_DIRECTORY}/respect/hist_info.txt" \
-	--output-directory "${OUTPUT_DIRECTORY}/" \
-	--spectra-output-size 50 \
-	--iterations 1000 \
-	--threads "${NUM_THREADS}"
+		ln --symbolic "$(realpath ${directory}/${file}.hist)" "${OUTPUT_DIRECTORY}/respect/"
+	done
+
+	respect --input-directories "${OUTPUT_DIRECTORY}/respect/" \
+		--info-file "${OUTPUT_DIRECTORY}/respect/hist_info.txt" \
+		--output-directory "${OUTPUT_DIRECTORY}/" \
+		--spectra-output-size 50 \
+		--iterations 1000 \
+		--threads "${NUM_THREADS}"
+fi
 
 #############################
 ## SUBSAMPLING USING SEQTK ##
