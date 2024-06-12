@@ -66,9 +66,9 @@ fi
 make -C ./KRANK/
 cd ./KRANK/
 echo "Downloading Bacterial Decontamination Library..."
-wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz --no-check-certificate
-tar -zxf ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
-rm ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+#wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz --no-check-certificate
+#tar -zxf ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+#rm ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
 cd ../
 
 ### Installing kraken2
