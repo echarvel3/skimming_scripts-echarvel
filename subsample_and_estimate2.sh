@@ -129,7 +129,7 @@ echo "OBTAINING RAW GENOME DISTANCES..."
 for file in $(ls "${INPUT}"); do
 	run_skmer "${INPUT}/${file}" "${OUTPUT_DIRECTORY}" "${SKMER_PROCESSORS}"
 done
-skmer distance "${OUTPUT_DIRECTORY}/skmer_library/" -p "${NUM_THREADS}" -o "${OUTPUT_DIRECTORY}/distance_matrix"
+eskmer distance "${OUTPUT_DIRECTORY}/skmer_library/" -p "${NUM_THREADS}" -o "${OUTPUT_DIRECTORY}/distance_matrix"
 
 rm -r "${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/"
 
@@ -158,6 +158,8 @@ done
 #######################################################
 
 echo "PERFORMING SKIMMING OPERATIONS ON SUBSAMPLED DATA..."
+
+TARGET_COV=$(echo "$TARGET_COV" | tr ',' ' ')
 
 for coverage in ${TARGET_COV}; do
 	for file in $(ls "${OUTPUT_DIRECTORY}/subsampled_data/${coverage}x_data/reads/"); do

@@ -93,20 +93,15 @@ Runs nuclear read processing pipeline on a batch of merged and decontaminated re
 "
 ## TODO: Implement post-processing pipelines, custom decontmination directories.
 
-while getopts ":hi:o:t:c:p:f:r:s:d:l:" opts 
+while getopts ":hi:o:t:p:s:" opts 
 do
     case $opts in
         h) echo "${usage}"; exit;;
 	i) INPUT="${OPTARG}" ;;
         o) OUTPUT_DIRECTORY="${OPTARG}";;
         t) NUM_THREADS="${OPTARG}";;
-        c) TARGET_COV="${OPTARG}";;
         p) SKMER_PROCESSORS="${OPTARG}";;
-	f) READ_1="${OPTARG}";;
-	r) READ_2="${OPTARG}";;
 	s) RANDOM_SEED="${OPTARG}";;
-	d) DOWNSAMPLING_VERSION="${OPTARG}";;
-	l) LIBRARIES="${OPTARG}";;
         [?]) echo "invalid input param"; exit 1;;
     esac
 done
@@ -136,14 +131,6 @@ LIBRARIES=${LIBRARIES:-"${SCRIPT_DIR}/KRANK/lib_reps_adpt-k29_w35_h13_b16_s8 ${S
 set -x
 
 mkdir --parents "${OUTPUT_DIRECTORY}"
-
-#####################
-## DECONTAMINATION ##
-#####################
-exec 1>&3
-echo "DECONTAMINATING DATA..."
-exec 3>&1 
-exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
 ###########
 ## SKMER ##
