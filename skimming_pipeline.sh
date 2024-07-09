@@ -170,6 +170,7 @@ for file in $(realpath "${INPUT}/*${READ_1}"); do
 
 	cat ${OUTPUT_DIRECTORY}/krank_output/krank_reports/classification_info-${read1} | grep --perl-regexp '\tU\t'  | cut -f1 | sed -e 's/@//g' > "${tmp_dir}/unclass_readnames1.txt"
 	cat ${OUTPUT_DIRECTORY}/krank_output/krank_reports/classification_info-${read2} | grep --perl-regexp '\tU\t'  | cut -f1 | sed -e 's/@//g' > "${tmp_dir}/unclass_readnames2.txt"
+	
 
 	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${INPUT}/${read1} in2=${INPUT}/${read2} out1="${tmp_dir}/${read1}" out2="${tmp_dir}/${read2}" threads=${NUM_THREADS} names="${tmp_dir}/unclass_readnames1.txt" include=true overwrite=true
 	${SCRIPT_DIR}/bbmap/filterbyname.sh in1=${tmp_dir}/${read2} in2=${tmp_dir}/${read1} out1="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read2}" out2="${OUTPUT_DIRECTORY}/krank_output/decontaminated_files/${read1}" threads=${NUM_THREADS} names="${tmp_dir}/unclass_readnames2.txt" include=true overwrite=true
@@ -275,6 +276,7 @@ exec 3>&1 1>>"${OUTPUT_DIRECTORY}/skimming-scripts.log" 2>&1
 
 tmp_coverages=$(mktemp "${OUTPUT_DIRECTORY}/coverages.XXXX")
 grep 'coverage' "${OUTPUT_DIRECTORY}/skmer_stats.tsv" | sort | cut  -f3 | sed -e 's/NA/1.0/g' > ${tmp_coverages}
+TARGET_COV=$(echo $TARGET_COV | tr ',' ' ')
 
 if [[ "${DOWNSAMPLING_VERSION}" == "RESPECT" ]]; then
 	cut -f1,4 estimated-parameters.txt | tail -n+2 | sort|  sed -e 's/hist\t/fastq\t/g' | cut -f2 | sed -e 's/NA/1.0/g' > ${tmp_coverages}
