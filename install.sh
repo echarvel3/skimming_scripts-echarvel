@@ -66,9 +66,14 @@ fi
 make -C ./KRANK/
 cd ./KRANK/
 echo "Downloading Bacterial Decontamination Library..."
-#wget https://ter-trees.ucsd.edu/data/krank/lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz --no-check-certificate
-#tar -zxf ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
-#rm ./lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+wget https://ter-trees.ucsd.edu/data/krank/wol_v1-lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz --no-check-certificate
+tar -zxf ./wol_v1-lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+rm ./wol_v1-lib_reps_adpt-k29_w35_h13_b16_s8.tar.gz
+
+echo "Downloading Human Decontamination Library..."
+wget https://ter-trees.ucsd.edu/data/krank/human_pangenome-lib_rand_free-k29_w34_h13_b16_s8.tar.gz --no-check-certificate
+tar -zxf ./human_pangenome-lib_rand_free-k29_w34_h13_b16_s8.tar.gz --no-check-certificate
+rm https://ter-trees.ucsd.edu/data/krank/human_pangenome-lib_rand_free-k29_w34_h13_b16_s8.tar.gz
 cd ../
 
 ### Installing kraken2
