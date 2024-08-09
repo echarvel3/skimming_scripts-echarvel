@@ -128,7 +128,7 @@ READ_1=${READ_1:-1.fq}
 READ_2=${READ_2:-2.fq}
 RANDOM_SEED=${RANDOM_SEED:-100}
 DOWNSAMPLING_VERSION=${DOWNSAMPLING_VERSION:-SKMER}
-LIBRARIES=${LIBRARIES:-"${SCRIPT_DIR}/KRANK/lib_reps_adpt-k29_w35_h13_b16_s8 ${SCRIPT_DIR}/KRANK/pangenome-05-2024-lib_rand_free-k29_w34_h13_b16_s8"}
+LIBRARIES=${LIBRARIES:-"${SCRIPT_DIR}/KRANK/wol_v1-lib_reps_adpt-k29_w35_h13_b16_s8/ ${SCRIPT_DIR}/KRANK/human_pangenome-lib_rand_free-k29_w34_h13_b16_s8/"}
 
 #################
 ## MAIN SCRIPT ##
@@ -157,7 +157,7 @@ ${SCRIPT_DIR}/KRANK/krank query \
 	--library-dir ${LIBRARIES} \
 	--query-file ${OUTPUT_DIRECTORY}/input_map.tsv \
 	--max-match-distance 5 \
-	--total-vote-threshold 0.03 \
+	--total-vote-threshold 0.2 \
 	--num-threads ${NUM_THREADS} \
 	--output-dir "${OUTPUT_DIRECTORY}/krank_output/krank_reports/" && echo "-- KRANK run was successful!"
 
