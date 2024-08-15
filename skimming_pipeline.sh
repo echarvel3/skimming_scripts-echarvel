@@ -157,7 +157,7 @@ ${SCRIPT_DIR}/KRANK/krank query \
 	--library-dir ${LIBRARIES} \
 	--query-file ${OUTPUT_DIRECTORY}/input_map.tsv \
 	--max-match-distance 5 \
-	--total-vote-threshold 0.2 \
+	--total-vote-threshold 0.05 0.2 \
 	--num-threads ${NUM_THREADS} \
 	--output-dir "${OUTPUT_DIRECTORY}/krank_output/krank_reports/" && echo "-- KRANK run was successful!"
 
